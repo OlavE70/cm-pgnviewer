@@ -9,4 +9,10 @@
   "author": "",
   "license": "ISC",
   "description": ""
+  "dependencies": {
+    "cm-pgn": "file:../cm-pgn",
+    "cm-chess": "file:../cm-chess",
+    "cm-chessboard": "file:../cm-chessboard"
+    "chess.mjs": "file:../chess.mjs"
+  }
 }
