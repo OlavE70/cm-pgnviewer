@@ -2,7 +2,7 @@
   "name": "cm-pgnviewer",
   "version": "1.0.0",
   "description": "PGN-Viewer mit cm-chessboard",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
   "dev": "vite",
   "build": "vite build",
@@ -10,7 +10,7 @@
   },
   "keywords": ["chess", "pgn", "viewer"],
   "author": "OlavE70",
-  "license": "",
+  "license": "MIT",
   "dependencies": {
     "chess.mjs": "file:../chess.mjs",
     "cm-chess": "file:../cm-chess",
