@@ -1,18 +1,23 @@
 {
   "name": "cm-pgnviewer",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "PGN-Viewer mit cm-chessboard",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["chess", "pgn", "viewer"],
+  "author": "OlavE70",
+  "license": "",
   "dependencies": {
-    "cm-pgn": "file:../cm-pgn",
+    "chess.mjs": "file:../chess.mjs",
     "cm-chess": "file:../cm-chess",
     "cm-chessboard": "file:../cm-chessboard",
-    "chess.mjs": "file:../chess.mjs"
+    "cm-pgn": "file:../cm-pgn"
+  },
+  "devDependencies": {
+    "vite": "^7.1.6"
   }
 }

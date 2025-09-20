@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>PGN Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <div id="app" style="display: flex; flex-direction: column; height: 100vh;">
+
+        <div id="board-container" style="width: 400px; margin-bottom: 1em;"></div>
+
+        <textarea id="pgnInput" placeholder="PGN hier einfügen" rows="8" cols="60"></textarea>
+
+        <div id="controls">
+            <button id="loadBtn">Laden</button>
+            <button id="resetBtn">Zurücksetzen</button>
+            <button id="startBtn">|&lt;</button>
+            <button id="prevBtn">&lt;</button>
+            <button id="nextBtn">&gt;</button>
+            <button id="endBtn">&gt;|</button>
+            <button id="flipBtn">Brett drehen</button>
+            <button id="autoBtn">Auto Play</button>
+        </div>
+
+        <div id="moves-container" style="flex: 1; overflow-y: auto; border: 1px solid #ccc; padding: 8px;"></div>
+
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
