@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <title>PGN Viewer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chessboard CSS aus public -->
+    <link rel="stylesheet" href="/cm-chessboard-assets/chessboard.css">
+    <!-- eigenes CSS -->
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
     <div id="app" style="display: flex; flex-direction: column; height: 100vh;">
@@ -27,6 +31,12 @@
 
     </div>
 
+    <!--Dev:-->
     <script type="module" src="/src/main.js"></script>
+    <!--Build:
+    <script type="module" src="/cm-pgnviewer.es.js"></script> 
+    -->
+
+
 </body>
 </html>

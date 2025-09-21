@@ -11,7 +11,7 @@ export class PgnViewer {
         this.autoPlaying = false;
 
         this.board = new Chessboard(this.boardContainer, {
-            assetsUrl: "/cm-chessboard/assets/",
+            assetsUrl: "/cm-chessboard-assets/",
             responsive: true,
             style: {
                 cssClass: "blue",
