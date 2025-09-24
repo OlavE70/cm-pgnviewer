@@ -9,8 +9,6 @@ export default defineConfig({
       "cm-chessboard": path.resolve(__dirname, "../cm-chessboard/src/Chessboard.js"),
       "chess.mjs/src/Chess.js": path.resolve(__dirname, "../chess.mjs/src/Chess.js"),
 
-      // Assets für cm-chessboard
-      // "cm-chessboard-assets": path.resolve(__dirname, "../cm-chessboard/assets"),
     },
   },
   build: {
