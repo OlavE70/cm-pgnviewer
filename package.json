@@ -14,10 +14,14 @@
   "author": "OlavE70",
   "license": "MIT",
   "peerDependencies": {
-    "cm-chessboard": "^1.0.0",
-    "cm-pgn": "^1.0.0"
+    "cm-chessboard": "*",
+    "cm-pgn": "*",
+    "chess.mjs": "*"
   },
   "devDependencies": {
-    "vite": "^7.1.6"
+    "vite": "^7.1.6",
+    "cm-chessboard": "file:../cm-chessboard",
+    "cm-pgn": "file:../cm-pgn",
+    "chess.mjs": "file:../chess.mjs"
   }
 }

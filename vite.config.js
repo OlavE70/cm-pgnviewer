@@ -3,13 +3,28 @@ import path from "path";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      // Lokale Pakete auf die konkreten Quellen zeigen
-      "cm-pgn": path.resolve(__dirname, "../cm-pgn/src/Pgn.js"),
-      "cm-chessboard": path.resolve(__dirname, "../cm-chessboard/src/Chessboard.js"),
-      "chess.mjs/src/Chess.js": path.resolve(__dirname, "../chess.mjs/src/Chess.js"),
-
-    },
+    alias: [
+      {
+        find: "cm-chessboard",
+        replacement: path.resolve(__dirname, "../cm-chessboard/src/Chessboard.js"),
+      },
+      {
+        find: "cm-chessboard/",
+        replacement: path.resolve(__dirname, "../cm-chessboard/src/"),
+      },
+      {
+        find: "cm-pgn",
+        replacement: path.resolve(__dirname, "../cm-pgn/src/Pgn.js"),
+      },
+      {
+        find: "cm-pgn/",
+        replacement: path.resolve(__dirname, "../cm-pgn/src/"),
+      },
+      {
+        find: "chess.mjs/src/Chess.js",
+        replacement: path.resolve(__dirname, "../chess.mjs/src/Chess.js"),
+      },
+    ],
   },
   build: {
     lib: {
@@ -18,7 +33,6 @@ export default defineConfig({
       fileName: (format) => `cm-pgnviewer.${format}.js`,
     },
     rollupOptions: {
-      // Diese Pakete bleiben extern, werden nicht gebündelt
       external: ["cm-chessboard", "cm-pgn", "chess.mjs"],
       output: {
         globals: {
@@ -33,5 +47,5 @@ export default defineConfig({
     port: 5173,
     open: true,
   },
-  publicDir: path.resolve(__dirname, "public"), // Optional für Demo-HTML & Assets
+  publicDir: path.resolve(__dirname, "public"),
 });

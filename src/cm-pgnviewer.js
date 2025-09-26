@@ -3,9 +3,10 @@ import { Chessboard, COLOR, FEN } from 'cm-chessboard';
 import { Chess } from 'chess.mjs';
 
 export class PgnViewer {
-    constructor(boardContainerId, movesContainerId) {
+    constructor(boardContainerId, movesContainerId, ids, pgnText) {
         this.boardContainer = document.getElementById(boardContainerId);
         this.movesContainer = document.getElementById(movesContainerId);
+        this.ids = ids; // IDs vom Wrapper
 
         this.autoPlayInterval = null;
         this.autoPlaying = false;
@@ -34,6 +35,10 @@ export class PgnViewer {
         // Controls und Board-Input
         this.registerBoardInput();
         this.registerControls();
+
+        if (pgnText) {
+            this.loadPgn(pgnText)
+        };
     }
 
     initBoardPGN() {
@@ -53,22 +58,10 @@ export class PgnViewer {
     }
 
     registerControls() {
-        document.getElementById('loadBtn').addEventListener('click', () => {
-            const pgn = document.getElementById('pgnInput').value;
-            this.loadPgn(pgn);
-        });
-
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            document.getElementById('pgnInput').value = '';
-            this.chess = new Chess();
-            this.initBoardPGN();
-            this.renderMoves();
-        });
-
-        document.getElementById('nextBtn').addEventListener('click', () => this.nextMove());
-        document.getElementById('prevBtn').addEventListener('click', () => this.prevMove());
-        document.getElementById('startBtn').addEventListener('click', () => this.goToStart());
-        document.getElementById('endBtn').addEventListener('click', () => this.goToEnd());
+        document.getElementById(this.ids.nextBtn).addEventListener('click', () => this.nextMove());
+        document.getElementById(this.ids.prevBtn).addEventListener('click', () => this.prevMove());
+        document.getElementById(this.ids.startBtn).addEventListener('click', () => this.goToStart());
+        document.getElementById(this.ids.endBtn).addEventListener('click', () => this.goToEnd());
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight') { this.nextMove(); e.preventDefault(); }
@@ -78,14 +71,26 @@ export class PgnViewer {
             if (e.key === 'ArrowUp') this.switchVariant(-1);
         });
 
-        document.getElementById('flipBtn').addEventListener('click', () => {
+        document.getElementById(this.ids.flipBtn).addEventListener('click', () => {
             this.board.setOrientation(this.board.getOrientation() === 'w' ? 'b' : 'w');
         });
 
-        document.getElementById('autoBtn').addEventListener('click', () => {
+        document.getElementById(this.ids.autoBtn).addEventListener('click', () => {
             if (this.autoPlaying) this.stopAutoPlay();
             else this.startAutoPlay();
         });
+
+        document.getElementById(this.ids.showBtn).addEventListener("click", () => {
+            const area = document.getElementById(this.ids.pgnArea);
+            if (area.style.display === "none") {
+                area.style.display = "block";
+                document.getElementById(this.ids.showBtn).textContent = "Hide PGN";
+            } else {
+                area.style.display = "none";
+                document.getElementById(this.ids.showBtn).textContent = "Show PGN";
+            }
+            });
+
     }
 
     // Vrearbeitung eigener Züge
