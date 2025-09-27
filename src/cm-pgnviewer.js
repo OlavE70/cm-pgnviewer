@@ -1,5 +1,6 @@
 import { Pgn as cmPgn } from 'cm-pgn';
 import { Chessboard, COLOR, FEN } from 'cm-chessboard';
+// @ts-ignore
 import { Chess } from 'chess.mjs';
 
 export class PgnViewer {

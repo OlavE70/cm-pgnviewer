@@ -21,7 +21,7 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "../cm-pgn/src/"),
       },
       {
-        find: "chess.mjs/src/Chess.js",
+        find: "chess.mjs",
         replacement: path.resolve(__dirname, "../chess.mjs/src/Chess.js"),
       },
     ],
