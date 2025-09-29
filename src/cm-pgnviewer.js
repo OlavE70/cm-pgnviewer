@@ -94,7 +94,7 @@ export class PgnViewer {
 
     }
 
-    // Vrearbeitung eigener Züge
+    // Verarbeitung eigener Züge
     registerBoardInput() {
         this.board.enableMoveInput((event) => {
             if (event.type === "validateMoveInput") {
@@ -351,16 +351,37 @@ export class PgnViewer {
 
     startAutoPlay() {
         this.autoPlaying = true;
-        document.getElementById('autoBtn').textContent = "Stop Auto";
+        const autoBtn = document.getElementById(this.ids.autoBtn);
+        if (autoBtn) autoBtn.textContent = "Stop Auto";
+
         this.autoPlayInterval = setInterval(() => {
-            if (!this.current?.next) this.stopAutoPlay();
-            else this.nextMove();
+            // Falls wir noch keinen Zug gespielt haben, starte mit dem ersten
+            if (!this.current) {
+                if (this.pgnObj.history.moves.length > 0) {
+                    this.current = this.pgnObj.history.moves[0];
+                    this.updateBoardToNode(this.current);
+                    this.renderMoves();
+                    return;
+                } else {
+                    this.stopAutoPlay(); // Nichts zu spielen
+                    return;
+                }
+            }
+
+            // Falls wir schon irgendwo sind
+            if (!this.current?.next) {
+                this.stopAutoPlay(); // Ende der Partie erreicht
+            } else {
+                this.nextMove();
+            }
         }, 1500);
     }
 
+
     stopAutoPlay() {
         this.autoPlaying = false;
-        document.getElementById('autoBtn').textContent = "Auto Play";
+        const autoBtn = document.getElementById(this.ids.autoBtn);
+        if (autoBtn) autoBtn.textContent = "Auto Play";
         if (this.autoPlayInterval) clearInterval(this.autoPlayInterval);
         this.autoPlayInterval = null;
     }
