@@ -1,6 +1,7 @@
 # CM PGN Viewer
 
 Ein schlanker Chess PGN Viewer für Browser, der Partien aus `<pgn>`-Tags darstellt. Unterstützt Navigation, Auto-Play, Varianten, Kommentare und responsive Layouts.
+ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 
 ## Dateien & Aufgaben
 
@@ -42,7 +43,7 @@ pgnViewerContainer
 <script src="src/cm-pgnadapter.js"></script>
 ```
 
-alternativ / ohne jQuery: 
+&nbsp;&nbsp;&nbsp;alternativ / ohne jQuery: 
 ```html
 <script type="module">
   import { initPgnViewers } from './src/cm-pgnwrapper.js';
@@ -63,7 +64,7 @@ alternativ / ohne jQuery:
 5. Steuerung:
 
    * Buttons: Flip, Start, Prev, Auto, Next, End, Show PGN
-   * Tastatur: Pfeiltasten für Züge & Varianten
+   * Tastatur: Pfeiltasten für Züge & Varianten, Space zusätzlich für Next
    * Board-Input erlaubt Drag&Drop und neue Züge
 
 > Mehrere Viewer auf einer Seite möglich, jeweils unabhängig.

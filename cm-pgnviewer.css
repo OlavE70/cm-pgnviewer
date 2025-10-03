@@ -150,6 +150,11 @@
   border-radius: 0.5em;
 }
 
+.pgnViewerContainer .button:focus {
+    outline: 2px solid #0078d7;
+    outline-offset: 2px;
+}
+
 /* === PGN-Textbereich === */
 .pgnText {
   display: none;
@@ -171,8 +176,6 @@
     overflow-y: auto !important; 
     visibility: visible !important;
 }
-
-/* Stellen Sie sicher, dass .pgnText KEIN absolutes/fixiertes Positioning hat! */
 
 /* === Responsive Design für kleine Bildschirme === */
 @media (max-width: 550px) {

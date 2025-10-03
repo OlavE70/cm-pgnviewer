@@ -72,24 +72,36 @@ export class PgnViewer {
         (this.boardContainer.parentElement || null);
 
         if (viewerContainer) {
-        // mach den Container fokussierbar
-        if (!viewerContainer.hasAttribute('tabindex')) viewerContainer.setAttribute('tabindex', '0');
+            // mach den Container fokussierbar
+            if (!viewerContainer.hasAttribute('tabindex')) viewerContainer.setAttribute('tabindex', '0');
 
-        // Klick in den Container soll Fokus setzen (damit Tastaturbefehle sichtbar wirken)
-        viewerContainer.addEventListener('click', () => {
-            try { viewerContainer.focus(); } catch (e) { /* ignore */ }
-        });
-
-        // Verhindere doppelte Bindung falls registerControls mehrmals aufgerufen wird
-        if (!this._keyboardBound) {
-            viewerContainer.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight') { this.nextMove(); e.preventDefault(); }
-            else if (e.key === 'ArrowLeft') { this.prevMove(); e.preventDefault(); }
-            else if (e.key === 'ArrowDown') { this.switchVariant(1); e.preventDefault(); }
-            else if (e.key === 'ArrowUp') { this.switchVariant(-1); e.preventDefault(); }
+            // Klick in den Container soll Fokus setzen (damit Tastaturbefehle sichtbar wirken)
+            viewerContainer.addEventListener('click', () => {
+                try { viewerContainer.focus(); } catch (e) { /* ignore */ }
             });
-            this._keyboardBound = true;
-        }
+
+            // Verhindere doppelte Bindung falls registerControls mehrmals aufgerufen wird
+            if (!this._keyboardBound) {
+                viewerContainer.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') { this.nextMove(); e.preventDefault(); }
+                else if (e.key === 'ArrowLeft') { this.prevMove(); e.preventDefault(); }
+                else if (e.key === 'ArrowDown') { this.switchVariant(1); e.preventDefault(); }
+                else if (e.key === 'ArrowUp') { this.switchVariant(-1); e.preventDefault(); }
+                else if (e.key === ' ') {     // Space
+                    e.preventDefault(); 
+                    if (this.autoPlaying) this.stopAutoPlay();
+                    this.nextMove(); 
+                    }
+                else if (e.key === 'Enter') {
+                    const activeMove = this.movesContainer.querySelector('.move:focus');
+                    if (activeMove) {
+                        activeMove.click();
+                        e.preventDefault();
+                    }
+                }
+                });
+                this._keyboardBound = true;
+            }
         }
 
         // Flip, Auto, Stop, Show

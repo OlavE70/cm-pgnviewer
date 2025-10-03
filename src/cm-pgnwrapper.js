@@ -58,6 +58,7 @@ export function initPgnViewers() {
     buttonsContainer.classList.add('buttons');
     buttonsContainer.id = `${baseId}Buttons`;
 
+    /* 
     const btnDefs = [
       { id: `${baseId}Flipper`, cls: 'flipper', icon: 'fa-sync-alt',      title: 'Flip' },
       { id: `${baseId}Start`,   cls: 'first',   icon: 'fa-step-backward', title: 'Start' },
@@ -80,6 +81,35 @@ export function initPgnViewers() {
       span.appendChild(icon);
 
       buttonsContainer.appendChild(span);
+    });
+    */
+   
+    const btnDefs = [
+      { id: `${baseId}Flipper`, cls: 'flipper', icon: 'fa-sync-alt', title: 'Flip Board' },
+      { id: `${baseId}Start`,   cls: 'first',   icon: 'fa-step-backward', title: 'Start' },
+      { id: `${baseId}Prev`,    cls: 'prev',    icon: 'fa-chevron-left',  title: 'Previous Move' },
+      { id: `${baseId}Auto`,    cls: 'play',    icon: 'fa-play',          title: 'Auto Play' },
+      { id: `${baseId}Next`,    cls: 'next',    icon: 'fa-chevron-right', title: 'Next Move' },
+      { id: `${baseId}End`,     cls: 'last',    icon: 'fa-step-forward',  title: 'Go to End' },
+      { id: `${baseId}Show`,    cls: 'show-pgn', icon: 'fa-file-alt',    title: 'Show PGN' }
+    ];
+
+    btnDefs.forEach(b => {
+      // Erzeuge semantisches Button-Element
+      const btn = document.createElement('button');
+      btn.className = `button ${b.cls}`;
+      btn.id = b.id;
+      btn.setAttribute('aria-label', b.title);
+      btn.type = 'button';
+
+      // Icon hinzufügen (Screenreader ignoriert Icon)
+      const icon = document.createElement('i');
+      icon.className = `fas ${b.icon}`;
+      icon.setAttribute('aria-hidden', 'true');
+      btn.appendChild(icon);
+
+      // Button in den Container einfügen
+      buttonsContainer.appendChild(btn);
     });
 
     boardColumn.appendChild(buttonsContainer);
