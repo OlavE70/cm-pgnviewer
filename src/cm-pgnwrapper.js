@@ -1,66 +1,136 @@
-import { PgnViewer } from "./cm-pgnviewer.js";
+import { PgnViewer } from './cm-pgnviewer.js';
 
 export function initPgnViewers() {
-  const pgnTags = document.querySelectorAll("pgn");
-  let counter = 1;
+  const pgnElements = Array.from(document.querySelectorAll('pgn'));
+  const viewers = [];
 
-  pgnTags.forEach(tag => {
-    const pgnText = tag.textContent.trim();
-    const viewerId = `pgnViewer${counter}`;
+  pgnElements.forEach((pgnElement, i) => {
+    let pgnTextRaw = (pgnElement.innerHTML || ''); 
 
-    // Container-IDs generieren
+    // für Übergabe an Viewer:
+    let  pgnText = pgnTextRaw
+      .replaceAll('<br/>', ' ')
+      .replaceAll('<br>', ' ')
+      .replaceAll('1:0', '1-0')
+      .replaceAll('0:1', '0-1')
+      .replaceAll('1/2:1/2', '1/2-1/2')
+      .replaceAll('0-0-0', 'O-O-O')
+      .replaceAll('0-0', 'O-O')
+      .trim(); 
+  
+    // für pgnArea möglichst Original, wie in <pgn> ... </pgn>, jedoch bereinigt um überflüssige White-Spaces
+    // und mit den bisherigen Bereinigungen aus pgnText:
+    pgnTextRaw =  pgnText
+      .replace(/\n\s+/g, '\n')
+      .trim();
+
+    const baseId = `pgnBoard${i}`;
+
+    // === Hauptcontainer ===
+    const viewerContainer = document.createElement('div');
+    viewerContainer.classList.add('pgnViewerContainer');
+    viewerContainer.id = baseId;
+    viewerContainer.style.visibility = 'hidden';
+
+    // optionaler Header (für Meta-Daten)
+    const header = document.createElement('div');
+    header.classList.add('viewer-header');
+    header.textContent = 'Mein Header';
+    viewerContainer.appendChild(header);
+
+    // Main-Container für Board / Buttons und Moves
+    const mainContent = document.createElement('div');
+    mainContent.classList.add('mainContent');
+    viewerContainer.appendChild(mainContent);
+
+    // === Linke Spalte: Board + Buttons ===
+    const boardColumn = document.createElement('div');
+    boardColumn.classList.add('boardColumn');   // flex-column
+    mainContent.appendChild(boardColumn);
+
+    const boardContainer = document.createElement('div');
+    boardContainer.classList.add('outerBoard', 'board-container');
+    boardContainer.id = `${baseId}Board`;
+    boardColumn.appendChild(boardContainer);
+
+    // Buttons unter Board
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.classList.add('buttons');
+    buttonsContainer.id = `${baseId}Buttons`;
+
+    const btnDefs = [
+      { id: `${baseId}Flipper`, cls: 'flipper', icon: 'fa-sync-alt',      title: 'Flip' },
+      { id: `${baseId}Start`,   cls: 'first',   icon: 'fa-step-backward', title: 'Start' },
+      { id: `${baseId}Prev`,    cls: 'prev',    icon: 'fa-chevron-left',  title: 'Prev.' },
+      { id: `${baseId}Auto`,    cls: 'play',    icon: 'fa-play',          title: 'Auto' },
+      { id: `${baseId}Next`,    cls: 'next',    icon: 'fa-chevron-right', title: 'Next' },
+      { id: `${baseId}End`,     cls: 'last',    icon: 'fa-step-forward',  title: 'End' },
+      { id: `${baseId}Show`,    cls: 'show-pgn', icon: 'fa-file-alt',     title: 'PGN' } 
+    ];
+
+    btnDefs.forEach(b => {
+      const span = document.createElement('span');
+      span.className = `button ${b.cls}`;
+      span.id = b.id;
+      span.setAttribute('role', 'button');
+      span.title = b.cls;
+
+      const icon = document.createElement('i');
+      icon.className = `fas ${b.icon}`;
+      span.appendChild(icon);
+
+      buttonsContainer.appendChild(span);
+    });
+
+    boardColumn.appendChild(buttonsContainer);
+
+    // === Rechte Spalte: Moves ===
+    const movesColumn = document.createElement('div');
+    movesColumn.classList.add('movesColumn'); // flex-column
+    mainContent.appendChild(movesColumn);
+
+    const movesContainer = document.createElement('div');
+    movesContainer.classList.add('moves');
+    movesContainer.id = `${baseId}Moves`;
+    movesColumn.appendChild(movesContainer);
+
+    // === PGN-Textbereich unterhalb beider Spalten ===
+    const pgnArea = document.createElement('div');
+    pgnArea.classList.add('pgnText');
+    pgnArea.id = `${baseId}PGN`;
+    pgnArea.textContent = pgnTextRaw;
+    pgnArea.style.display  = 'none';
+
+    // <pgn> ersetzen
+    pgnElement.replaceWith(viewerContainer);
+    // pgnArea anschließend setzen
+    viewerContainer.after(pgnArea);
+
+    // IDs für PgnViewer
     const ids = {
-      root: viewerId,
-      board: `board${counter}`,
-      controls: `controls${counter}`,
-      moves: `moves${counter}`,
-      startBtn: `startBtn${counter}`,
-      prevBtn: `prevBtn${counter}`,
-      nextBtn: `nextBtn${counter}`,
-      endBtn: `endBtn${counter}`,
-      flipBtn: `flipBtn${counter}`,
-      autoBtn: `autoBtn${counter}`,
-      showBtn: `showBtn${counter}`,
-      pgnArea: `pgnArea${counter}`,
+      flipBtn: `${baseId}Flipper`,
+      startBtn: `${baseId}Start`,
+      prevBtn: `${baseId}Prev`,
+      autoBtn: `${baseId}Auto`,
+      nextBtn: `${baseId}Next`,
+      endBtn: `${baseId}End`,
+      showBtn: `${baseId}Show`,
+      pgnArea: `${baseId}PGN`
     };
 
-    // Neues HTML für den Viewer
-    const wrapper = document.createElement("div");
-    wrapper.className = "pgn-viewer";
-    wrapper.id = ids.root;
-    wrapper.innerHTML = `
-      <div id="${ids.board}" class="board"></div>
+    // PgnViewer erzeugen
+    const viewerInstance = new PgnViewer(boardContainer.id, movesContainer.id, ids, pgnText);
+    viewers.push({ container: viewerContainer, instance: viewerInstance });
+    viewerContainer.style.visibility = 'visible';
+  });
 
-      <div id="${ids.controls}" class="controls">
-        <button id="${ids.startBtn}">|&lt;</button>
-        <button id="${ids.prevBtn}">&lt;</button>
-        <button id="${ids.nextBtn}">&gt;</button>
-        <button id="${ids.endBtn}">&gt;|</button>
-        <button id="${ids.flipBtn}">Flip</button>
-        <button id="${ids.autoBtn}">Auto</button>
-        <button id="${ids.showBtn}">Show PGN</button>
-      </div>
-
-      <div id="${ids.pgnArea}" class="pgn-area" style="display:none;">
-        <pre>${pgnText}</pre>
-      </div>
-
-      <div id="${ids.moves}" class="moves"></div>
-    `;
-
-    // Ersetze das ursprüngliche <pgn>-Element
-    tag.replaceWith(wrapper);
-
-    // Neuen Viewer initialisieren
-    const viewer = new PgnViewer(ids.board, ids.moves, ids, pgnText);
-
-    counter++;
+  window.addEventListener('load', () => {
+    viewers.forEach(({ container, instance }) => {
+      if (typeof instance.renderMoves === 'function') instance.renderMoves();
+    });
   });
 }
 
-// Automatischer Aufruf bei DOMContentLoaded
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initPgnViewers);
-} else {
-  initPgnViewers();
+if (typeof window !== 'undefined') {
+  window.initPgnViewers = initPgnViewers;
 }

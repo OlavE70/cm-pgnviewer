@@ -6,98 +6,135 @@
 
   <!-- Stylesheet für cm-chessboard -->
   <link rel="stylesheet" href="/cm-chessboard-assets/chessboard.css">
+  <link rel="stylesheet" href="cm-pgnviewer.css">
+  <!-- FontAwesome 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
-  <title>PGN Viewer Demo</title>
   <style>
-    .pgn-viewer {
-      margin: 2em 0;
-      border: 1px solid #ccc;
-      padding: 1em;
+    /* Responsive Container: Gilt standardmäßig für alle Bildschirmgrößen */
+    .responsive-container {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 1000px; /* Standard: Begrenzt auf breitere Bildschirme */
+        width: 95%; /* Hält 95% der Breite, um Ränder zu lassen */
+        padding: 0 1rem;
     }
-    .board {
-      max-width: 400px;
-      margin: auto;
-    }
-    .controls {
-      text-align: center;
-      margin-top: 0.5em;
-    }
-    .moves {
-      margin-top: 1em;
-      font-family: sans-serif;
-    }
-    .moves .move.active {
-      font-weight: bold;
-      color: darkred;
-    }
-    .variant {
-      margin-left: 1.5em;
-      font-style: italic;
-    }
-    .comment {
-      display: block;
-      color: #555;
-      margin: 0.2em 0;
-    }
-    .comment-inline {
-      color: #555;
-    }
-    .pgn-area {
-      margin-top: 1em;
-      display: none;
+
+    /* Anpassung für Smartphones (max. 550px Breite) */
+    @media (max-width: 550px) {
+        .responsive-container {
+            max-width: 100%; /* Erlaubt volle Breite auf kleinen Geräten */
+            width: 100%;
+            padding: 0 0.5rem; /* Reduziert die horizontalen Ränder */
+        }
     }
   </style>
+  <title>PGN Viewer Demo</title>
 </head>
 <body>
   <h1>PGN Viewer Demo (neuer Wrapper + Viewer mit Adapter)</h1>
+  <div class="responsive-container">
+    <pgn>
+      [Event "Tilburg Interpolis"]
+      [Site "Tilburg NED"]
+      [Date "1978.09.03"]
+      [Round "3"]
+      [White "Zoltan Ribli"]
+      [Black "Vlastimil Hort"]
+      [Result "0-1"]
+      [WhiteElo "?"]
+      [BlackElo "?"]
+      [ECO "E15"]
 
-  <!-- Drei Beispiel-PGN wie auf der Originalseite -->
-  <pgn>
-    [Event "Beispielpartie 1"]
-    [Site "Berlin"]
-    [Date "2023.07.01"]
-    [Round "1"]
-    [White "Spieler A"]
-    [Black "Spieler B"]
-    [Result "1-0"]
+      1. d4 Nf6 2. c4 e6 3. Nf3 b6 4. g3 Ba6 {Greift sofort c4 an und ist schärfer
+      als das 'natürliche' Lb7.} 5. b3 Bb4+ 6. Bd2 Be7 {Sinn und Zweck dieses
+      zunächst sonderbar anmutenden, aber in ähnlichen Stellungen häufig
+      anzutreffenden Läufermanövers war es, den weißen Läufer auf ein Feld (d2) zu
+      locken, wo er mehr im Weg steht als nützt.} 7. Nc3 c6 8. e4 d5 9. Qc2 {Der
+      ungarische GM bereitet e5 vor, indem er das Feld e4 noch einmal überdeckt.} (
+      {Häufig wird auch das sofortige} 9. e5 Ne4 10. Bd3 {gespielt.} ) 9... dxe4
+      {Hort möchte nun e4-e5 nicht mehr zulassen.} 10. Nxe4 Bb7 {Der richtige Platz
+      des Läufers ist jetzt auf der langen Diagonale; auf a6 hatte er nichts mehr
+      auszurichten. Früher oder später wird Schwarz c5 spielen und damit den Lb7 zur
+      vollen Wirksamkeit verhelfen.} 11. Bd3 {Im 4. Zug hatte Weiß mit g2-g3 dem
+      Läufer ein Entwicklungsfeld auf g2 bereitet, aber danach waren immer wieder
+      Ereignisse eingetreten, die diese Entwicklung verzögert hatten. Nun entscheidet
+      Weiß, dass der Läufer hier besser steht als auf g2.} ( {Auf} 11. Bg2 {wäre
+      nämlich sofort} 11... c5 {erfolgt, mit Angriff auf den Se4.} ) 11... Nbd7 12.
+      O-O-O {Im Fall der kurzen Rochade würde nun der Königsläufer auf g2 fehlen.
+      Freilich ist die lange Rochade nicht ohne Risiken. Schwarz kann und wird mit a5
+      die Öffnung der a-Linie betreiben. Das hätte Hort auch gleich spielen können,
+      aber da seine Figuren ein wenig gedrängt stehen, zieht er es vor, zunächst
+      einen entlastenden Tausch einzuschalten.} 12... Nxe4 13. Bxe4 Nf6 14. Rhe1 O-O
+      15. h4 {Aus dem geplanten Angriff gegen die kurze Rochade des Schwarzen wird
+      nichts werden, trotzdem ist nichts Besseres zu sehen.} 15... a5 16. Bc3 (
+      {Konsequenter war} 16. h5 {.} ) 16... Bb4 $1 17. Bxb4 $6 {Ohne wirkliche
+      Notwendigkeit öffnet Weiß seinem Gegner die a-Linie.} ( {Es ist nicht ganz
+      verständlich, warum der Ungar nicht gleich} 17. Ne5 {gespielt hat.} ) 17...
+      axb4 18. Ne5 $6 {Nun ist dies wegen der schwarzen Fortsetzung nicht mehr so
+      gut.} ( {Interessant war jedenfalls} 18. c5 $5 {, um schwarzes c6-c5 zu
+      blockieren.} ) 18... Nxe4 19. Rxe4 c5 {Schwarz hat bereits die Initiative
+      übernommen.} 20. dxc5 $5 {Mit diesem Qualitätsopfer versucht Weiß das Blatt
+      noch zu wenden; das Spiel wird nun äußerst kompliziert.} 20... Bxe4 21. Qxe4
+      Qf6 $1 {Hort spielt auf Gewinn!} ( {Nach dem vorsichtigen} 21... Qc7 {hätte
+      Weiß mit} 22. Nd7 $1 {die Qualität zurückerobert:} 22... bxc5 $1 {(wegen der
+      Drohung cxb6 erzwungen)} 23. Nxf8 Rxf8 {mit sehr wahrscheinlichem Remis.} ) 22.
+      cxb6 {Nun hat Weiß zwei verbundene Freibauern, aber einen luftigen König.}
+      22... Qxf2 {Greift nicht nur b6 an und verhindert c5, sondern droht vor allem
+      Txa2 mit Verdopplung auf der vorletzten Reihe und tödlichen Mattdrohungen.} 23.
+      Qd4 {Der einzige Zug, der alles hält.} 23... Qxa2 24. Nd7 $2 {Bisher hat Ribli
+      in kritischer Stellung gut mitgemischt, dieser Zug aber verliert sofort.} (
+      {Mit} 24. c5 $1 {konnte Weiß seine verbundenen Freibauern als Gegengewicht zum
+      schwarzen Angriff in die Waagschale werfen.} ) 24... Qa1+ {Hort erzwingt die
+      folgende - von Weiß wohl übersehene - Abwicklung in ein gewonnenes Endspiel.}
+      25. Qxa1 Rxa1+ 26. Kc2 Rxd1 27. Kxd1 (27. Nxf8 Rd8 {ist nicht besser und
+      verläuft ähnlich wie die Partiefortsetzung.} ) 27... Rd8 {Diese Fesselung ist
+      entscheidend, und die weißen Bauern erweisen sich als zu langsam.} 28. c5 Rxd7+
+      29. Ke2 {Weiß fehlt nur ein Tempo, denn wäre er am Zug, so würden nach c6 seine
+      verbundenen Freibauern gegen den Turm gewinnen!} 29... Rb7 {So aber hilft auch
+      die Annäherung des weißen Königs nicht mehr, da der schwarze ebenfalls
+      herankommt.} 30. Kd3 Kf8 31. Kc4 Ke8 {und Ribli gab auf, weil er sah, dass Hort
+      die weißen Bauern stoppen wird.} ( {Es könnte noch weitergehen mit} 31... Ke8
+      32. Kb5 Kd8 33. c6 Re7) 0-1
+    </pgn>
+  </div>
 
-    1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 
-    7. Bb3 d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7 1-0
-  </pgn>
+  <div class="responsive-container">
+    <pgn>
+      [Event "Beispielpartie 2"]
+      [Site "Hamburg"]
+      [Date "2023.07.02"]
+      [Round "2"]
+      [White "Spieler C"]
+      [Black "Spieler D"]
+      [Result "0-1"]
 
-  <pgn>
-    [Event "Beispielpartie 2"]
-    [Site "Hamburg"]
-    [Date "2023.07.02"]
-    [Round "2"]
-    [White "Spieler C"]
-    [Black "Spieler D"]
-    [Result "0-1"]
+      1. d4 d5 2. c4 c6 3. Nc3 Nf6 4. Nf3 e6 5. Bg5 Nbd7 
+      6. e3 Qa5 7. Nd2 Bb4 8. Qc2 O-O 9. Be2 dxc4 10. Nxc4 Qxg5 0-1
+    </pgn>
+  </div>
 
-    1. d4 d5 2. c4 c6 3. Nc3 Nf6 4. Nf3 e6 5. Bg5 Nbd7 
-    6. e3 Qa5 7. Nd2 Bb4 8. Qc2 O-O 9. Be2 dxc4 10. Nxc4 Qxg5 0-1
-  </pgn>
+  <div class="responsive-container">
+    <pgn>
+      [Event "Beispielpartie 3"]
+      [Site "München"]
+      [Date "2023.07.03"]
+      [Round "3"]
+      [White "Spieler E"]
+      [Black "Spieler F"]
+      [Result "1/2-1/2"]
 
-  <pgn>
-    [Event "Beispielpartie 3"]
-    [Site "München"]
-    [Date "2023.07.03"]
-    [Round "3"]
-    [White "Spieler E"]
-    [Black "Spieler F"]
-    [Result "1/2-1/2"]
-
-    1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 
-    5. Nc3 a6 6. Bg5 e6 7. f4 Qb6 8. Qd2 Qxb2 9. Rb1 Qa3 10. e5 dxe5 1/2-1/2
-  </pgn>
-
+      1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 
+      5. Nc3 a6 6. Bg5 e6 7. f4 Qb6 8. Qd2 Qxb2 9. Rb1 Qa3 10. e5 dxe5 1/2-1/2
+    </pgn>
+  </div>
   <!-- jQuery laden (wie auf Originalseite) -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
   <!-- Neue Dateien -->
   <script type="module" src="./src/cm-pgnviewer.js"></script>
   <script type="module" src="./src/cm-pgnwrapper.js"></script>
-  <script src="./src/cm-pgnadapter.js"></script>
+  <script type ="module" src="./src/cm-pgnadapter.js"></script>
 
   <!-- Original-Initialisierung -->
   <script>

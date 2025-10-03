@@ -1,13 +1,16 @@
+// cm-pgnviewer.js
 import { Pgn as cmPgn } from 'cm-pgn';
 import { Chessboard, COLOR, FEN } from 'cm-chessboard';
 // @ts-ignore
 import { Chess } from 'chess.mjs/src/Chess.js';
 
+// Zeiger auf aktives AutoPlay -> es soll nur jeweils ein Board laufen
+let currentAutoPlayer = null;
 export class PgnViewer {
     constructor(boardContainerId, movesContainerId, ids, pgnText) {
         this.boardContainer = document.getElementById(boardContainerId);
         this.movesContainer = document.getElementById(movesContainerId);
-        this.ids = ids; // IDs vom Wrapper
+        this.ids = ids;
 
         this.autoPlayInterval = null;
         this.autoPlaying = false;
@@ -30,23 +33,19 @@ export class PgnViewer {
 
         this.chess = new Chess();
 
-        // Initialisieren
         this.initBoardPGN();
-
-        // Controls und Board-Input
         this.registerBoardInput();
         this.registerControls();
 
         if (pgnText) {
-            this.loadPgn(pgnText)
-        };
+            this.loadPgn(pgnText);
+        }
     }
 
     initBoardPGN() {
         this.startFen = FEN.start;
         this.startPly = 0;
-        this.pgnObj = new cmPgn(""); // leeres PGN / History-Objekt
-        // virtual root: klein, nur für Insert-/UI-Logik (nicht von cm-pgn)
+        this.pgnObj = new cmPgn("");
         this.root = {
             fen: this.startFen,
             ply: this.startPly,
@@ -54,70 +53,86 @@ export class PgnViewer {
             next: null,
             variation: this.pgnObj.history?.moves || []
         };
-        this.current = null;         // noch kein Zug gespielt
+        this.current = null;
         this.board.setPosition(this.startFen, false);
     }
 
     registerControls() {
-        document.getElementById(this.ids.nextBtn).addEventListener('click', () => this.nextMove());
-        document.getElementById(this.ids.prevBtn).addEventListener('click', () => this.prevMove());
-        document.getElementById(this.ids.startBtn).addEventListener('click', () => this.goToStart());
-        document.getElementById(this.ids.endBtn).addEventListener('click', () => this.goToEnd());
+        const get = id => document.getElementById(id);
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight') { this.nextMove(); e.preventDefault(); }
-            if (e.key === 'ArrowLeft') { this.prevMove(); e.preventDefault(); }
+        get(this.ids.nextBtn)?.addEventListener('click', () => this.nextMove());
+        get(this.ids.prevBtn)?.addEventListener('click', () => this.prevMove());
+        get(this.ids.startBtn)?.addEventListener('click', () => this.goToStart());
+        get(this.ids.endBtn)?.addEventListener('click', () => this.goToEnd());
 
-            if (e.key === 'ArrowDown') this.switchVariant(1);
-            if (e.key === 'ArrowUp') this.switchVariant(-1);
+        // --- Scoped keyboard handling: nur der fokussierte Viewer reagiert ---
+        // Versuche, den umgebenden Viewer-Container zu finden (Wrapper setzt class 'pgnViewerContainer')
+        const viewerContainer =
+        this.boardContainer.closest?.('.pgnViewerContainer') ||
+        (this.boardContainer.parentElement || null);
+
+        if (viewerContainer) {
+        // mach den Container fokussierbar
+        if (!viewerContainer.hasAttribute('tabindex')) viewerContainer.setAttribute('tabindex', '0');
+
+        // Klick in den Container soll Fokus setzen (damit Tastaturbefehle sichtbar wirken)
+        viewerContainer.addEventListener('click', () => {
+            try { viewerContainer.focus(); } catch (e) { /* ignore */ }
         });
 
-        document.getElementById(this.ids.flipBtn).addEventListener('click', () => {
+        // Verhindere doppelte Bindung falls registerControls mehrmals aufgerufen wird
+        if (!this._keyboardBound) {
+            viewerContainer.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') { this.nextMove(); e.preventDefault(); }
+            else if (e.key === 'ArrowLeft') { this.prevMove(); e.preventDefault(); }
+            else if (e.key === 'ArrowDown') { this.switchVariant(1); e.preventDefault(); }
+            else if (e.key === 'ArrowUp') { this.switchVariant(-1); e.preventDefault(); }
+            });
+            this._keyboardBound = true;
+        }
+        }
+
+        // Flip, Auto, Stop, Show
+        get(this.ids.flipBtn)?.addEventListener('click', () => {
             this.board.setOrientation(this.board.getOrientation() === 'w' ? 'b' : 'w');
         });
 
-        document.getElementById(this.ids.autoBtn).addEventListener('click', () => {
-            if (this.autoPlaying) this.stopAutoPlay();
-            else this.startAutoPlay();
+        get(this.ids.autoBtn)?.addEventListener('click', () => {
+            this.startAutoPlay();
         });
 
-        document.getElementById(this.ids.showBtn).addEventListener("click", () => {
-            const area = document.getElementById(this.ids.pgnArea);
+        get(this.ids.stopBtn)?.addEventListener('click', () => {
+            this.stopAutoPlay();
+        });
+
+        get(this.ids.showBtn)?.addEventListener("click", () => {
+            const area = get(this.ids.pgnArea);
+            if (!area) return;
+            const btn = get(this.ids.showBtn);
             if (area.style.display === "none") {
                 area.style.display = "block";
-                document.getElementById(this.ids.showBtn).textContent = "Hide PGN";
             } else {
                 area.style.display = "none";
-                document.getElementById(this.ids.showBtn).textContent = "Show PGN";
             }
-            });
-
+        });
     }
 
-    // Verarbeitung eigener Züge
     registerBoardInput() {
         this.board.enableMoveInput((event) => {
             if (event.type === "validateMoveInput") {
                 const { squareFrom, squareTo } = event;
 
-                // aktuelle Stellung laden (Start-FEN, wenn noch keine Züge)
                 this.chess.load(this.current?.fen || this.startFen);
-
-                // Zug im Chess-Objekt ausführen
                 const move = this.chess.move({
                     from: squareFrom,
                     to: squareTo,
                     promotion: "q"
                 });
-
                 if (!move) return false;
 
                 const san = move.san;
-
-                // === Branchpoint bestimmen ===
                 const branchPoint = this.current || this.root;
 
-                // 1. Hauptlinie prüfen
                 if (branchPoint.next && branchPoint.next.san === san) {
                     this.current = branchPoint.next;
                     this.updateBoardToNode(this.current);
@@ -125,7 +140,6 @@ export class PgnViewer {
                     return true;
                 }
 
-                // 2. Alle Varianten prüfen
                 if (branchPoint.variations?.length) {
                     for (const variation of branchPoint.variations) {
                         if (variation.length > 0 && variation[0].san === san) {
@@ -137,12 +151,8 @@ export class PgnViewer {
                     }
                 }
 
-                // === Zug existiert noch nicht → hinzufügen ===
                 let prev = this.current || null;
-                if (!prev && this.root?.next) {
-                    // es existiert bereits eine Hauptlinie -> wir wollen eine Variante
-                    prev = this.root;
-                }
+                if (!prev && this.root?.next) prev = this.root;
 
                 let newMove;
                 try {
@@ -152,22 +162,14 @@ export class PgnViewer {
                     return false;
                 }
 
-                // Falls wir gerade aus einem Zustand ohne root.next gestartet sind,
-                // stellen wir sicher, dass virtual root auf die aktuelle erste Hauptlinie zeigt.
                 if (!this.root.next && this.pgnObj.history.moves.length > 0) {
                     this.root.next = this.pgnObj.history.moves[0];
                     this.root.variation = this.pgnObj.history.moves;
                 }
 
-                // Aktuellen Zug auf neu hinzugefügten Move setzen
                 this.current = newMove;
-
-                // Board updaten
                 this.board.setPosition(this.chess.fen(), true);
-
-                // Moves rendern
                 this.renderMoves();
-
                 return true;
             }
             return true;
@@ -176,25 +178,16 @@ export class PgnViewer {
 
     loadPgn(pgnText) {
         try {
-            // PGN parsen
             this.pgnObj = new cmPgn(pgnText);
-
-            // Start-FEN und Ply aus PGN
             this.startFen = this.pgnObj.history?.setUpFen || FEN.start;
             this.startPly = this.pgnObj.history?.startPly || 0;
-
-            // virtual root -> verweist auf die Hauptlinie (falls vorhanden)
             this.root.variation = this.pgnObj.history?.moves || [];
             this.root.next = this.pgnObj.history?.moves?.[0] || null;
-
-            this.current = null; // Start der Partie
+            this.current = null;
             this.board.setPosition(this.startFen, false);
-
-            // Züge rendern
             this.renderMoves();
         } catch (e) {
             console.error("PGN parse failed", e);
-            // Im Fehlerfall Board zurücksetzen
             this.initBoardPGN();
             this.renderMoves();
         }
@@ -205,7 +198,6 @@ export class PgnViewer {
 
         const renderNode = (moves, container, isVariant = false) => {
             moves.forEach(move => {
-                // Kommentar vor dem Zug
                 if (move.commentBefore) {
                     const cb = document.createElement(isVariant ? 'span' : 'div');
                     cb.className = isVariant ? 'comment-inline' : 'comment';
@@ -214,25 +206,18 @@ export class PgnViewer {
                     container.appendChild(document.createTextNode(' '));
                 }
 
-                // Zugnummer berechnen
                 const zeroBased = Math.floor((move.ply - 1) / 2);
                 const startMoveNumber = Math.floor(this.startPly / 2) + 1;
                 const moveNumber = startMoveNumber + zeroBased;
 
-                // Erkennen, ob der Zug der erste einer Variation ist
                 const isFirstInVariation = !!(move.variation && move.variation[0] === move);
 
                 let prefix = '';
-                if (move.color === 'w') {
-                    prefix = `${moveNumber}. `;
-                } else {
-                    // Schwarzen Zügen "..." voranstellen, wenn erster Zug einer Variante oder Kommentare
-                    if (isFirstInVariation || (move.previous?.commentAfter) || move.commentBefore) {
-                        prefix = `${moveNumber}... `;
-                    }
+                if (move.color === 'w') prefix = `${moveNumber}. `;
+                else if (isFirstInVariation || (move.previous?.commentAfter) || move.commentBefore) {
+                    prefix = `${moveNumber}... `;
                 }
 
-                // Hauptzug
                 const span = document.createElement('span');
                 span.className = 'move' + (move === this.current ? ' active' : '');
                 span.textContent = prefix + (move.san || '(?)');
@@ -243,10 +228,8 @@ export class PgnViewer {
                     this.renderMoves();
                 });
                 container.appendChild(span);
-                // Abstand zwischen Zügen
                 container.appendChild(document.createTextNode(' '));
 
-                // Kommentar nach Zug
                 if (move.commentAfter) {
                     const ca = document.createElement(isVariant ? 'span' : 'div');
                     ca.className = isVariant ? 'comment-inline' : 'comment';
@@ -255,7 +238,6 @@ export class PgnViewer {
                     container.appendChild(document.createTextNode(' '));
                 }
 
-                // Varianten rekursiv rendern (jede Variante ist ein Array)
                 if (move.variations?.length) {
                     for (const variation of move.variations) {
                         const varContainer = document.createElement('div');
@@ -270,9 +252,51 @@ export class PgnViewer {
         if (this.pgnObj?.history?.moves?.length) {
             renderNode(this.pgnObj.history.moves, this.movesContainer, false);
         }
-        // aktiven Zug ins Sichtfeld scrollen
+
+        /*
         const active = this.movesContainer.querySelector('.move.active');
         if (active) active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        */
+       this.scrollActiveMoveIntoView();
+    }
+
+    scrollActiveMoveIntoView() {
+        const activeMove = this.movesContainer.querySelector('.move.active');
+        if (!activeMove) return;
+
+        const scroller = this.movesContainer;
+        const scrollerRect = scroller.getBoundingClientRect();
+        const moveRect = activeMove.getBoundingClientRect();
+
+        const moveHeight = Math.max(activeMove.offsetHeight || 0, moveRect.height || 0, 20);
+        const scrollerVisibleHeight = scroller.clientHeight;
+
+        // Puffer für "Sichtbarkeit" (z. B. 10% oder 2 Zeilenhöhen)
+        const padding = Math.min(Math.round(scrollerVisibleHeight * 0.2), moveHeight * 2);
+
+        const isFullyVisible =
+            moveRect.top >= scrollerRect.top + padding &&
+            moveRect.bottom <= scrollerRect.bottom - padding;
+
+        if (isFullyVisible) {
+            // Nichts tun → kein Ruckeln bei Zügen in gleicher Zeile
+            return;
+        }
+
+        // Wenn nicht sichtbar → mittig scrollen
+        const desiredTopInViewport = scrollerRect.top + (scrollerVisibleHeight / 2 - moveHeight / 2);
+        const delta = moveRect.top - desiredTopInViewport;
+
+        let targetScrollTop = scroller.scrollTop + delta;
+        const maxScrollTop = Math.max(0, scroller.scrollHeight - scrollerVisibleHeight);
+
+        if (targetScrollTop < 0) targetScrollTop = 0;
+        if (targetScrollTop > maxScrollTop) targetScrollTop = maxScrollTop;
+
+        scroller.scrollTo({
+            top: targetScrollTop,
+            behavior: 'smooth'
+        });
     }
 
     updateBoardToNode(node) {
@@ -281,30 +305,15 @@ export class PgnViewer {
         this.board.setPosition(fen, false);
     }
 
-    /**
-     * Finde den Abzweig-Zug (branch point), an dem eine Variante entsteht.
-     * @param {Object} move - Ein Move-Objekt aus History.js
-     * @returns {Object|null} - Der Zug, an dem die Variante abzweigt, oder null (bei Hauptlinie).
-     */
     getBranchPoint(move) {
         if (!move) return null;
-
-        // Variante prüfen
         if (move.variation && move.variation.length > 0) {
             const firstMove = move.variation[0];
-            if (firstMove?.previous) {
-                return firstMove.previous.next; // Branchpoint = der Zug, auf den die Variante antwortet
-            }
+            if (firstMove?.previous) return firstMove.previous.next;
         }
-
-        // Hauptlinie prüfen
-        if (move.variations && move.variations.length > 0) {
-            return move; // Branchpoint = Zug selbst
-        }
-
-        return null; // keine Varianten
+        if (move.variations && move.variations.length > 0) return move;
+        return null;
     }
-
 
     nextMove() {
         if (!this.current) {
@@ -350,12 +359,21 @@ export class PgnViewer {
     }
 
     startAutoPlay() {
+        // 👉 Toggle: falls dieser Viewer schon läuft → stoppen
+        if (this.autoPlaying) {
+            this.stopAutoPlay();
+            return;
+        }
+
+        // Falls ein anderer Viewer läuft → stoppen
+        if (currentAutoPlayer && currentAutoPlayer !== this) {
+            currentAutoPlayer.stopAutoPlay();
+        }
+
         this.autoPlaying = true;
-        const autoBtn = document.getElementById(this.ids.autoBtn);
-        if (autoBtn) autoBtn.textContent = "Stop Auto";
+        currentAutoPlayer = this;
 
         this.autoPlayInterval = setInterval(() => {
-            // Falls wir noch keinen Zug gespielt haben, starte mit dem ersten
             if (!this.current) {
                 if (this.pgnObj.history.moves.length > 0) {
                     this.current = this.pgnObj.history.moves[0];
@@ -363,79 +381,60 @@ export class PgnViewer {
                     this.renderMoves();
                     return;
                 } else {
-                    this.stopAutoPlay(); // Nichts zu spielen
+                    this.stopAutoPlay();
                     return;
                 }
             }
 
-            // Falls wir schon irgendwo sind
             if (!this.current?.next) {
-                this.stopAutoPlay(); // Ende der Partie erreicht
+                this.stopAutoPlay();
             } else {
                 this.nextMove();
             }
         }, 1500);
     }
 
-
     stopAutoPlay() {
+        if (!this.autoPlaying) return;
         this.autoPlaying = false;
-        const autoBtn = document.getElementById(this.ids.autoBtn);
-        if (autoBtn) autoBtn.textContent = "Auto Play";
         if (this.autoPlayInterval) clearInterval(this.autoPlayInterval);
         this.autoPlayInterval = null;
+
+        // wenn dieser Viewer der aktuelle war → global freigeben
+        if (currentAutoPlayer === this) {
+            currentAutoPlayer = null;
+        }
     }
 
-    // Varianten-Steuerung mit den Pfeiltasten
     switchVariant(direction = 1) {
-        // 1. Priorität: Varianten direkt an der aktuellen Position
         if (this.current?.variations?.length) {
             const variants = this.current.variations;
-            if (direction > 0) {
-                // vorwärts → erste Untervariante betreten
-                this.current = variants[0][0];
-            } else {
-                // rückwärts → zum Branchpoint zurück
-                const branchPoint = this.getBranchPoint(variants[0][0]);
-                this.current = branchPoint || this.current;
-            }
+            this.current = direction > 0 ? variants[0][0] : (this.getBranchPoint(variants[0][0]) || this.current);
             this.updateBoardToNode(this.current);
             this.renderMoves();
             return;
         }
 
-        // 2. Fallback: Varianten am übergeordneten Branchpoint
         const branchPoint = this.getBranchPoint(this.current);
-        if (!branchPoint || !branchPoint.variations?.length) {
-            // keine Varianten vorhanden
-            return;
-        }
+        if (!branchPoint || !branchPoint.variations?.length) return;
 
         const variants = branchPoint.variations;
         let idx = variants.findIndex(v => v.includes(this.current));
 
         if (idx === -1) {
-            // Wir sind in der Hauptlinie
-            if (direction > 0) {
-                this.current = variants[0][0];  // erste Variante betreten
-            } else {
-                this.current = branchPoint;     // rückwärts → Branchpoint selbst
-            }
+            this.current = direction > 0 ? variants[0][0] : branchPoint;
         } else {
-            // Wir sind bereits in einer Variante
             const newIdx = idx + direction;
-
-            if (newIdx < 0) {
-                this.current = branchPoint; // vor der ersten Variante → Branchpoint
-            } else if (newIdx >= variants.length) {
-                this.current = branchPoint.next || branchPoint; // hinter der letzten Variante
-            } else {
-                this.current = variants[newIdx][0]; // Geschwistervariante wechseln
-            }
+            if (newIdx < 0) this.current = branchPoint;
+            else if (newIdx >= variants.length) this.current = branchPoint.next || branchPoint;
+            else this.current = variants[newIdx][0];
         }
 
         this.updateBoardToNode(this.current);
         this.renderMoves();
     }
+}
 
+if (typeof window !== 'undefined') {
+    window.PgnViewer = PgnViewer;
 }

@@ -1,0 +1,205 @@
+/* === Hauptcontainer für einen Viewer ===
+   - enthält Header, MainContent und PGN-Text
+   - Höhe: Standard 40vh, klein 90vh */
+
+/*
+.pgnViewerContainer (flex-direction: column; height: 40vh / 90vh)
+├─ .viewer-header         ← optionaler Header, volle Breite, fix oberhalb
+├─ .mainContent           ← flex: 1 1 auto, nimmt restliche Höhe zwischen Header und PGN-Text
+│  ├─ .boardColumn        ← linke Spalte, flex-direction: column, min-width: 50%
+│  │  ├─ .outerBoard      ← Board-Container, Board + Buttons vertikal
+│  │  │  └─ .board        ← quadratisches Schachbrett (aspect-ratio: 1/1)
+│  │  └─ .buttons         ← alle Buttons inkl. ShowPGN, in einer Zeile, umbrechbar
+│  └─ .movesColumn        ← rechte Spalte, flex-direction: column, min-width: 50%
+│     └─ .moves           ← Moves-Liste, flex: 1 1 auto, overflow-y: auto
+└─ .pgnText               ← PGN-Textbereich, unterhalb von mainContent, scrollt bei Bedarf
+*/
+
+.pgnViewerContainer {
+  display: flex;
+  flex-direction: column; /* Header, MainContent, PGN-Text untereinander */
+  width: 100%;
+  max-height: 40vH;
+  box-sizing: border-box;
+  margin: 0.5rem 0;
+}
+
+/* === Optionaler Header über gesamte Breite === */
+.pgnViewerContainer .viewer-header {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+/* === MainContent: Board+Buttons links, Moves rechts === */
+.pgnViewerContainer .mainContent {
+  display: flex;
+  flex-direction: row;    /* nebeneinander */
+  min-height: 0;
+  gap: 1rem;
+  flex: 1 1 auto;         /* füllt den verfügbaren Platz */
+  align-items: stretch;
+}
+
+/* === Linke Spalte (Board + Buttons) === */
+.pgnViewerContainer .boardColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 50%;          /* mindestens 50% */
+  min-width: 50%;
+  gap: 0.5rem;
+}
+
+/* === Rechte Spalte (Moves) === */
+.pgnViewerContainer .movesColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 50%;          /* mindestens 50% */
+  min-width: 50%;
+  min-height: 0;
+}
+
+/* === Schachbrett-Container === */
+.pgnViewerContainer .outerBoard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pgnViewerContainer .outerBoard .board {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1 / 1;      /* immer quadratisch */
+}
+
+/* === Buttons unterhalb des Boards === */
+.pgnViewerContainer .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5em;
+}
+
+.pgnViewerContainer .buttons span.button {
+  padding: 6px 10px;
+  cursor: pointer;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  -webkit-user-select: none; 
+  -moz-user-select: none;    
+  -ms-user-select: none;     
+  user-select: none;         
+}
+
+.pgnViewerContainer .buttons span.button i {
+  margin-right: 0.25em;
+}
+
+.pgnViewerContainer .buttons span.button:hover {
+  background: #ddd;
+}
+
+/* === Moves-Liste === */
+.pgnViewerContainer .moves {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;       /* Scroll immer möglich */
+  padding: 0.5em 1em;
+  border-left: 1px solid #ccc;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+/* Einzelner Zug */
+.pgnViewerContainer .move {
+  cursor: pointer;
+  color: #111;
+  margin-right: 0.25em;
+}
+
+/* Aktiver Zug hervorgehoben */
+.pgnViewerContainer .move.active {
+  background: #ff0;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* Kommentare */
+.pgnViewerContainer .comment {
+  color: #555;
+  margin: 0.2em 0;
+}
+
+.pgnViewerContainer .comment-inline {
+  color: #555;
+  display: inline;
+}
+
+/* Varianten */
+.pgnViewerContainer .variant {
+  margin: 0.5em 0 0.5em 1em;
+  padding: 0.5em;
+  background: #eee;
+  border-radius: 0.5em;
+}
+
+/* === PGN-Textbereich === */
+.pgnText {
+  display: none;
+  width: 100%;               /* volle Breite */
+  margin-top: 0.5rem;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  font-family: monospace;
+  font-size: 0.9em;
+  background: #f9f9f9;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.show-pgn .pgnText {
+    height: auto !important; 
+    overflow-y: auto !important; 
+    visibility: visible !important;
+}
+
+/* Stellen Sie sicher, dass .pgnText KEIN absolutes/fixiertes Positioning hat! */
+
+/* === Responsive Design für kleine Bildschirme === */
+@media (max-width: 550px) {
+  .pgnViewerContainer {
+    height: 90vh; /* Setzt die feste Höhe, um den Viewer größer zu machen */
+    max-height: 90vh; /* Stellt sicher, dass die Begrenzung 90vH ist */
+    overflow: hidden !important; /* Wichtig, um das Scrollen auf die inneren Elemente zu begrenzen */
+  }
+
+  .pgnViewerContainer .mainContent {
+    flex-direction: column;
+  }
+
+  .pgnViewerContainer .movesColumn {
+    flex: 0 0 auto;
+    max-height: 40vh; /* Begrenzt die Moves-Liste auf 40vH, wie gewünscht */
+  }
+
+  .pgnViewerContainer .moves {
+    border-left: none;
+    border-top: 1px solid #ccc;
+    overflow-y: auto !important;       /* Scroll immer möglich */
+
+  }
+
+  .pgnViewerContainer .outerBoard .board {
+    max-width: 100%;
+  }
+}
+
