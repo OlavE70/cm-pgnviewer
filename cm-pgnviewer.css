@@ -6,13 +6,13 @@
 .pgnViewerContainer (flex-direction: column; height: 40vh / 90vh)
 ├─ .viewer-header         ← optionaler Header, volle Breite, fix oberhalb
 ├─ .mainContent           ← flex: 1 1 auto, nimmt restliche Höhe zwischen Header und PGN-Text
-│  ├─ .boardColumn        ← linke Spalte, flex-direction: column, min-width: 50%
+│  ├─ .boardColumn        ← linke Spalte, flex-direction: column
 │  │  ├─ .outerBoard      ← Board-Container, Board + Buttons vertikal
 │  │  │  └─ .board        ← quadratisches Schachbrett (aspect-ratio: 1/1)
-│  │  └─ .buttons         ← alle Buttons inkl. ShowPGN, in einer Zeile, umbrechbar
-│  └─ .movesColumn        ← rechte Spalte, flex-direction: column, min-width: 50%
-│     └─ .moves           ← Moves-Liste, flex: 1 1 auto, overflow-y: auto
-└─ .pgnText               ← PGN-Textbereich, unterhalb von mainContent, scrollt bei Bedarf
+│  │  └─ .buttons         ← alle Buttons, in einer Zeile, umbrechbar
+│  └─ .movesColumn        ← rechte Spalte, flex-direction: column
+│     └─ .moves           ← Moves-Liste
+└─ .pgnText               ← PGN-Textbereich, unterhalb von mainContent
 */
 
 .pgnViewerContainer {
@@ -26,9 +26,19 @@
 
 /* === Optionaler Header über gesamte Breite === */
 .pgnViewerContainer .viewer-header {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
   width: 100%;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  font-family: sans-serif;
+  line-height: 1.2em;
+}
+
+.pgnViewerContainer .viewer-header .header-line1 {
+  font-weight: bold;
+}
+.pgnViewerContainer .viewer-header .header-line2 {
+  font-size: 0.9em;
+  color: #444;
 }
 
 /* === MainContent: Board+Buttons links, Moves rechts === */

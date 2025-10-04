@@ -35,7 +35,7 @@ export function initPgnViewers() {
     // optionaler Header (für Meta-Daten)
     const header = document.createElement('div');
     header.classList.add('viewer-header');
-    header.textContent = 'Mein Header';
+    header.id = `${baseId}Header`
     viewerContainer.appendChild(header);
 
     // Main-Container für Board / Buttons und Moves
@@ -58,32 +58,6 @@ export function initPgnViewers() {
     buttonsContainer.classList.add('buttons');
     buttonsContainer.id = `${baseId}Buttons`;
 
-    /* 
-    const btnDefs = [
-      { id: `${baseId}Flipper`, cls: 'flipper', icon: 'fa-sync-alt',      title: 'Flip' },
-      { id: `${baseId}Start`,   cls: 'first',   icon: 'fa-step-backward', title: 'Start' },
-      { id: `${baseId}Prev`,    cls: 'prev',    icon: 'fa-chevron-left',  title: 'Prev.' },
-      { id: `${baseId}Auto`,    cls: 'play',    icon: 'fa-play',          title: 'Auto' },
-      { id: `${baseId}Next`,    cls: 'next',    icon: 'fa-chevron-right', title: 'Next' },
-      { id: `${baseId}End`,     cls: 'last',    icon: 'fa-step-forward',  title: 'End' },
-      { id: `${baseId}Show`,    cls: 'show-pgn', icon: 'fa-file-alt',     title: 'PGN' } 
-    ];
-
-    btnDefs.forEach(b => {
-      const span = document.createElement('span');
-      span.className = `button ${b.cls}`;
-      span.id = b.id;
-      span.setAttribute('role', 'button');
-      span.title = b.cls;
-
-      const icon = document.createElement('i');
-      icon.className = `fas ${b.icon}`;
-      span.appendChild(icon);
-
-      buttonsContainer.appendChild(span);
-    });
-    */
-   
     const btnDefs = [
       { id: `${baseId}Flipper`, cls: 'flipper', icon: 'fa-sync-alt', title: 'Flip Board' },
       { id: `${baseId}Start`,   cls: 'first',   icon: 'fa-step-backward', title: 'Start' },
@@ -138,6 +112,9 @@ export function initPgnViewers() {
 
     // IDs für PgnViewer
     const ids = {
+      board: `${baseId}Board`,
+      moves: `${baseId}Moves`,
+      header: `${baseId}Header`,
       flipBtn: `${baseId}Flipper`,
       startBtn: `${baseId}Start`,
       prevBtn: `${baseId}Prev`,
@@ -149,7 +126,7 @@ export function initPgnViewers() {
     };
 
     // PgnViewer erzeugen
-    const viewerInstance = new PgnViewer(boardContainer.id, movesContainer.id, ids, pgnText);
+    const viewerInstance = new PgnViewer(ids, pgnText);
     viewers.push({ container: viewerContainer, instance: viewerInstance });
     viewerContainer.style.visibility = 'visible';
   });
