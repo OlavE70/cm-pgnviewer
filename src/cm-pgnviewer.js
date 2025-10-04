@@ -242,6 +242,16 @@ export class PgnViewer {
 
         const renderNode = (moves, container, isVariant = false) => {
             moves.forEach(move => {
+
+                // --- Kommentar direkt zum Zug (commentMove) ---
+                if (move.commentMove) {
+                    const cm = document.createElement(isVariant ? 'span' : 'div');
+                    cm.className = isVariant ? 'comment-inline' : 'comment';
+                    cm.textContent = move.commentMove;
+                    container.appendChild(cm);
+                    container.appendChild(document.createTextNode(' '));
+                }
+
                 if (move.commentBefore) {
                     const cb = document.createElement(isVariant ? 'span' : 'div');
                     cb.className = isVariant ? 'comment-inline' : 'comment';
@@ -274,6 +284,16 @@ export class PgnViewer {
                 container.appendChild(span);
                 container.appendChild(document.createTextNode(' '));
 
+                // --- NAG (z. B. $1, $2) ---
+                if (move.nag) {
+                    const nag = document.createElement('span');
+                    nag.className = 'nag';
+                    nag.textContent = `${move.nag}`;
+                    container.appendChild(nag);
+                    container.appendChild(document.createTextNode(' '));
+                }
+
+                // --- Kommentar nach dem Zug (commentAfter) ---
                 if (move.commentAfter) {
                     const ca = document.createElement(isVariant ? 'span' : 'div');
                     ca.className = isVariant ? 'comment-inline' : 'comment';
@@ -297,10 +317,6 @@ export class PgnViewer {
             renderNode(this.pgnObj.history.moves, this.movesContainer, false);
         }
 
-        /*
-        const active = this.movesContainer.querySelector('.move.active');
-        if (active) active.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        */
        this.scrollActiveMoveIntoView();
     }
 
