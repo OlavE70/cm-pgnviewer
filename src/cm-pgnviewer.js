@@ -220,9 +220,19 @@ export class PgnViewer {
             return;
         }
 
+        // Zeile 1: White - Black, nur anzeigen, wenn vorhanden
+        const line1Parts = [];
+        if (h.White) line1Parts.push(h.White);
+        if (h.Black) line1Parts.push(h.Black);
+        const line1 = line1Parts.join(' - ');
+
+        // Zeile 2: Event · Site · Round · Date · ECO · Result, nur vorhandene Werte
+        const line2Tags = [h.Event, h.Site, h.Round, h.Date, h.ECO, h.Result].filter(Boolean);
+        const line2 = line2Tags.join(' · '); // Zentrierter Punkt als Trenner
+
         const html = `
-        <div class="header-line1">${(h.White || '')}${(h.Black ? ' - ' + h.Black : '')}</div>
-        <div class="header-line2">${[h.Event, h.Site, h.Round, h.Date, h.ECO, h.Result].filter(Boolean).join(' | ')}</div>
+            <div class="header-line1">${line1}</div>
+            <div class="header-line2">${line2}</div>
         `;
         this.headerElement.innerHTML = html.trim();
     }
@@ -232,6 +242,16 @@ export class PgnViewer {
 
         const renderNode = (moves, container, isVariant = false) => {
             moves.forEach(move => {
+
+                // --- Kommentar direkt zum Zug (commentMove) ---
+                if (move.commentMove) {
+                    const cm = document.createElement(isVariant ? 'span' : 'div');
+                    cm.className = isVariant ? 'comment-inline' : 'comment';
+                    cm.textContent = move.commentMove;
+                    container.appendChild(cm);
+                    container.appendChild(document.createTextNode(' '));
+                }
+
                 if (move.commentBefore) {
                     const cb = document.createElement(isVariant ? 'span' : 'div');
                     cb.className = isVariant ? 'comment-inline' : 'comment';
@@ -261,9 +281,33 @@ export class PgnViewer {
                     this.updateBoardToNode(move);
                     this.renderMoves();
                 });
-                container.appendChild(span);
-                container.appendChild(document.createTextNode(' '));
+                container.appendChild(span); // anschließendes Leerzeichen in NAG-Logik verlagert
 
+                // --- NAG (z. B. $1, $2) ---
+                if (move.nag) {
+                    var nagInfo = this.nagToSymbol(move.nag);
+                    // nagInfo ist jetzt garantiert ein Objekt { symbol, isSymbol }
+                    var symbol = nagInfo && nagInfo.symbol ? nagInfo.symbol : '';
+                    var isSymbol = !!(nagInfo && nagInfo.isSymbol);
+
+                    var nagSpan = document.createElement('span');
+                    nagSpan.className = 'nag';
+                    nagSpan.textContent = symbol;
+
+                    // Wenn kein symbolischer NAG (z. B. "$99"), dann vorher ein Leerzeichen
+                    if (!isSymbol) {
+                        container.appendChild(document.createTextNode(' '));
+                    }
+                    // Hänge das NAG direkt (bei symbolischen NAGs ohne vorheriges Leerzeichen)
+                    container.appendChild(nagSpan);
+                    container.appendChild(document.createTextNode(' '));
+                }
+                else {
+                    // falls kein NAG, dann Leerzeichen nach Zug
+                    container.appendChild(document.createTextNode(' '));
+                }
+
+                // --- Kommentar nach dem Zug (commentAfter) ---
                 if (move.commentAfter) {
                     const ca = document.createElement(isVariant ? 'span' : 'div');
                     ca.className = isVariant ? 'comment-inline' : 'comment';
@@ -287,10 +331,6 @@ export class PgnViewer {
             renderNode(this.pgnObj.history.moves, this.movesContainer, false);
         }
 
-        /*
-        const active = this.movesContainer.querySelector('.move.active');
-        if (active) active.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        */
        this.scrollActiveMoveIntoView();
     }
 
@@ -393,7 +433,7 @@ export class PgnViewer {
     }
 
     startAutoPlay() {
-        // 👉 Toggle: falls dieser Viewer schon läuft → stoppen
+        //  Toggle: falls dieser Viewer schon läuft → stoppen
         if (this.autoPlaying) {
             this.stopAutoPlay();
             return;
@@ -467,6 +507,48 @@ export class PgnViewer {
         this.updateBoardToNode(this.current);
         this.renderMoves();
     }
+
+    /* Wandelt einen NAG-Code in ein Symbol um     */
+// In deiner Klasse (z. B. cm-pgnviewer.js)
+    nagToSymbol(nag) {
+        // Mapping vom Parser-Code zum darzustellenden Symbol
+        var map = {
+            '$1': '!',
+            '$2': '?',
+            '$3': '!!',
+            '$4': '??',
+            '$5': '!?',
+            '$6': '?!',
+            '$7': '□',
+            '$10': '=',
+            '$13': '∞',
+            '$14': '⩲',
+            '$15': '⩱',
+            '$16': '±',
+            '$17': '∓',
+            '$18': '+-',
+            '$19': '-+',
+            '$22': '⨀',
+            '$32': '⟳',
+            '$36': '→',
+            '$40': '↑',
+            '$132': '⇆',
+            '$220': 'D'
+        };
+
+        if (nag === null || nag === undefined) {
+            return { symbol: '', isSymbol: false };
+        }
+        // sicherstellen, dass wir mit String arbeiten
+        var key = (typeof nag === 'string') ? nag : String(nag);
+
+        if (map.hasOwnProperty(key)) {
+            return { symbol: map[key], isSymbol: true }; // bekanntes Symbol, kein Leerzeichen vor dem Symbol
+        }
+        // Fallback: Parser-Literal wie "$99" -> behalten und als *kein* Symbol behandeln
+        return { symbol: key, isSymbol: false };
+    }
+
 }
 
 if (typeof window !== 'undefined') {
