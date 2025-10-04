@@ -7,10 +7,11 @@ import { Chess } from 'chess.mjs/src/Chess.js';
 // Zeiger auf aktives AutoPlay -> es soll nur jeweils ein Board laufen
 let currentAutoPlayer = null;
 export class PgnViewer {
-    constructor(boardContainerId, movesContainerId, ids, pgnText) {
-        this.boardContainer = document.getElementById(boardContainerId);
-        this.movesContainer = document.getElementById(movesContainerId);
+    constructor(ids, pgnText) {
         this.ids = ids;
+        this.boardContainer = document.getElementById(this.ids.board);
+        this.movesContainer = document.getElementById(this.ids.moves);
+        this.headerElement = document.getElementById(this.ids.header);
 
         this.autoPlayInterval = null;
         this.autoPlaying = false;
@@ -197,12 +198,33 @@ export class PgnViewer {
             this.root.next = this.pgnObj.history?.moves?.[0] || null;
             this.current = null;
             this.board.setPosition(this.startFen, false);
-            this.renderMoves();
+            this.renderHeader();
         } catch (e) {
             console.error("PGN parse failed", e);
             this.initBoardPGN();
-            this.renderMoves();
+            if (this.headerElement) {
+                this.headerElement.innerHTML = "";
+            }
+            this.pgnObj = null;
         }
+
+        this.renderMoves();
+    }
+
+    renderHeader() {
+        if (!this.headerElement) return;
+
+        const h = this.pgnObj?.header.tags;
+        if (!h) {
+            this.headerElement.innerHTML = "";
+            return;
+        }
+
+        const html = `
+        <div class="header-line1">${(h.White || '')}${(h.Black ? ' - ' + h.Black : '')}</div>
+        <div class="header-line2">${[h.Event, h.Site, h.Round, h.Date, h.ECO, h.Result].filter(Boolean).join(' | ')}</div>
+        `;
+        this.headerElement.innerHTML = html.trim();
     }
 
     renderMoves() {

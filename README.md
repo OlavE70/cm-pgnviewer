@@ -1,6 +1,6 @@
 # CM PGN Viewer
 
-Ein schlanker Chess PGN Viewer für Browser, der Partien aus `<pgn>`-Tags darstellt. Unterstützt Navigation, Auto-Play, Varianten, Kommentare und responsive Layouts.
+Ein schlanker Chess PGN-Viewer für Browser, der Partien aus `<pgn>`-Tags darstellt. Unterstützt Navigation, Auto-Play, Varianten, Kommentare und responsive Layouts.
 ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 
 ## Dateien & Aufgaben
@@ -10,6 +10,13 @@ ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 * **src/cm-pgnadapter.js** – Adapter für Legacy-Seiten (`$.cmPgnViewer()`), ruft `initPgnViewers()`.
 * **src/cm-pgnwrapper.js** – Wrapper, der `<pgn>`-Tags erkennt, Viewer-Container aufbaut und `PgnViewer` initialisiert.
 * **src/cm-pgnviewer.js** – Kernklasse `PgnViewer`: Board- und Partie-Logik, PGN laden, Moves rendern, Varianten & Kommentare anzeigen, Auto-Play, Tastatursteuerung, Board-Input.
+
+## Abhängigkeiten
+
+* cm-chessboard
+* cm-pgn
+* chess.mjs
+>> siehe https://github.com/shaack. 
 
 ## Container-Aufbau
 
