@@ -220,9 +220,19 @@ export class PgnViewer {
             return;
         }
 
+        // Zeile 1: White - Black, nur anzeigen, wenn vorhanden
+        const line1Parts = [];
+        if (h.White) line1Parts.push(h.White);
+        if (h.Black) line1Parts.push(h.Black);
+        const line1 = line1Parts.join(' - ');
+
+        // Zeile 2: Event · Site · Round · Date · ECO · Result, nur vorhandene Werte
+        const line2Tags = [h.Event, h.Site, h.Round, h.Date, h.ECO, h.Result].filter(Boolean);
+        const line2 = line2Tags.join(' · '); // Zentrierter Punkt als Trenner
+
         const html = `
-        <div class="header-line1">${(h.White || '')}${(h.Black ? ' - ' + h.Black : '')}</div>
-        <div class="header-line2">${[h.Event, h.Site, h.Round, h.Date, h.ECO, h.Result].filter(Boolean).join(' | ')}</div>
+            <div class="header-line1">${line1}</div>
+            <div class="header-line2">${line2}</div>
         `;
         this.headerElement.innerHTML = html.trim();
     }
