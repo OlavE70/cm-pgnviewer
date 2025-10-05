@@ -7,12 +7,13 @@ import { Chess } from 'chess.mjs/src/Chess.js';
 // Zeiger auf aktives AutoPlay -> es soll nur jeweils ein Board laufen
 let currentAutoPlayer = null;
 export class PgnViewer {
-    constructor(ids, pgnText) {
+    constructor(ids, data) {
         this.ids = ids;
         this.boardContainer = document.getElementById(this.ids.board);
         this.movesContainer = document.getElementById(this.ids.moves);
         this.headerElement = document.getElementById(this.ids.header);
 
+        this.mode= "pgn";
         this.autoPlayInterval = null;
         this.autoPlaying = false;
 
@@ -35,14 +36,25 @@ export class PgnViewer {
         this.chess = new Chess();
 
         this.initBoardPGN();
-        this.registerBoardInput();
-        this.registerControls();
 
-        if (pgnText) {
-            this.loadPgn(pgnText);
+        if (typeof data === "string") {
+            this.mode = "pgn";
+            this.loadPgn(data);
+        } else if (data?.type === "board") {
+            this.mode = "board";
+            const fen = this.completeFen(data.fen);
+            const miniPgn = `[SetUp "1"]
+                [FEN "${fen}"]`;
+            this.loadBoard(miniPgn, data.meta);
+        } else if (data?.type === "fen") {
+            this.mode = "fen";
+            this.loadFen(data.fen, data.meta);
         }
+
+        this.registerControls();
     }
 
+    /* Zeigt Board an, wenn kein PGN vorliegt. */
     initBoardPGN() {
         this.startFen = FEN.start;
         this.startPly = 0;
@@ -60,11 +72,6 @@ export class PgnViewer {
 
     registerControls() {
         const get = id => document.getElementById(id);
-
-        get(this.ids.nextBtn)?.addEventListener('click', () => this.nextMove());
-        get(this.ids.prevBtn)?.addEventListener('click', () => this.prevMove());
-        get(this.ids.startBtn)?.addEventListener('click', () => this.goToStart());
-        get(this.ids.endBtn)?.addEventListener('click', () => this.goToEnd());
 
         // --- Scoped keyboard handling: nur der fokussierte Viewer reagiert ---
         // Versuche, den umgebenden Viewer-Container zu finden (Wrapper setzt class 'pgnViewerContainer')
@@ -105,31 +112,55 @@ export class PgnViewer {
             }
         }
 
-        // Flip, Auto, Stop, Show
         get(this.ids.flipBtn)?.addEventListener('click', () => {
             this.board.setOrientation(this.board.getOrientation() === 'w' ? 'b' : 'w');
         });
 
-        get(this.ids.autoBtn)?.addEventListener('click', () => {
-            this.startAutoPlay();
-        });
+        if (this.mode === "pgn") {
 
-        get(this.ids.stopBtn)?.addEventListener('click', () => {
-            this.stopAutoPlay();
-        });
+            get(this.ids.nextBtn)?.addEventListener('click', () => this.nextMove());
+            get(this.ids.prevBtn)?.addEventListener('click', () => this.prevMove());
+            get(this.ids.startBtn)?.addEventListener('click', () => this.goToStart());
+            get(this.ids.endBtn)?.addEventListener('click', () => this.goToEnd());
 
-        get(this.ids.showBtn)?.addEventListener("click", () => {
-            const area = get(this.ids.pgnArea);
-            if (!area) return;
-            const btn = get(this.ids.showBtn);
-            if (area.style.display === "none") {
-                area.style.display = "block";
-            } else {
-                area.style.display = "none";
-            }
-        });
+            get(this.ids.autoBtn)?.addEventListener('click', () => {
+                this.startAutoPlay();
+            });
+
+            get(this.ids.stopBtn)?.addEventListener('click', () => {
+                this.stopAutoPlay();
+            });
+
+            get(this.ids.showBtn)?.addEventListener("click", () => {
+                const area = get(this.ids.pgnArea);
+                if (!area) return;
+                const btn = get(this.ids.showBtn);
+                if (area.style.display === "none") {
+                    area.style.display = "block";
+                } else {
+                    area.style.display = "none";
+                }
+            });
+        } 
+        else {
+            get(this.ids.undoBtn)?.addEventListener('click', () => {
+                this.undoMove();
+            });
+
+            get(this.ids.resetBtn)?.addEventListener('click', () => {
+                this.resetFen();
+            });
+        }
     }
 
+    /* === Abschnitt für this.mode = "board" === */
+    loadBoard(pgn, meta) {
+        this.meta = meta;
+        this.loadPgn(pgn);
+        this.renderFenHeader(this.meta);
+    }
+
+    /* === Abschnitt speziell für PGN === */
     registerBoardInput() {
         this.board.enableMoveInput((event) => {
             if (event.type === "validateMoveInput") {
@@ -192,13 +223,15 @@ export class PgnViewer {
     loadPgn(pgnText) {
         try {
             this.pgnObj = new cmPgn(pgnText);
-            this.startFen = this.pgnObj.history?.setUpFen || FEN.start;
-            this.startPly = this.pgnObj.history?.startPly || 0;
+            this.startFen = this.pgnObj.history?.props?.setUpFen || FEN.start;
+            this.startPly = this.pgnObj.history?.props?.startPly || 0;
             this.root.variation = this.pgnObj.history?.moves || [];
             this.root.next = this.pgnObj.history?.moves?.[0] || null;
             this.current = null;
             this.board.setPosition(this.startFen, false);
-            this.renderHeader();
+            if (this.mode === "pgn") {
+                this.renderPgnHeader();
+            }
         } catch (e) {
             console.error("PGN parse failed", e);
             this.initBoardPGN();
@@ -209,9 +242,10 @@ export class PgnViewer {
         }
 
         this.renderMoves();
+        this.registerBoardInput();
     }
 
-    renderHeader() {
+    renderPgnHeader() {
         if (!this.headerElement) return;
 
         const h = this.pgnObj?.header.tags;
@@ -236,6 +270,130 @@ export class PgnViewer {
         `;
         this.headerElement.innerHTML = html.trim();
     }
+    /* === Ende des PGN-Abschnitts === */
+
+    /* === Abschnitt speziell für FEN / Schachkomposition === */
+    loadFen(fen, meta = {}) {
+        this.meta = meta;
+
+        // Board mit oder ohne Validitätsprüfung der Züge?
+        this.dummyBoard = meta?.dummy || false;
+
+        this.startFen = this.completeFen(fen);
+        try {
+            this.chess.load(this.startFen);
+        } catch {
+            console.warn("Invalid or partial FEN, using default setup fallback.");
+            this.chess.reset();
+        }
+
+        this.board.setPosition(this.chess.fen(), false);
+        this.moves = [];
+        this.renderFenHeader(meta);
+        this.renderMoves();
+        this.registerFenInput();
+    }
+
+    completeFen(fen) {
+        const parts = fen.trim().split(/\s+/);
+        if (parts.length === 1) return `${parts[0]} w - - 0 1`;
+        if (parts.length === 2) return `${parts.join(' ')} - - 0 1`;
+        if (parts.length === 3) return `${parts.join(' ')} - 0 1`;
+        if (parts.length === 4) return `${parts.join(' ')} 0 1`;
+        if (parts.length === 5) return `${parts.join(' ')} 1`;
+        return fen;
+    }
+
+    registerFenInput() {
+        this.board.enableMoveInput(async (event) => {
+            if (event.type !== "validateMoveInput") return true;
+
+            const from = event.squareFrom;
+            const to = event.squareTo;
+
+            // Ply / Farbe
+            const ply = this.current ? this.current.ply + 1 : 1;
+            const color = ply % 2 === 1 ? 'w' : 'b';
+
+            let fen, san, piece;
+
+            if (!this.dummyBoard) {
+                // Legal FEN → chess.js validiert
+                const lastFen = this.current?.fen || this.startFen;
+                this.chess.load(lastFen);
+                const move = this.chess.move({ from, to, promotion: 'q' });
+                if (!move) return false;
+                fen = this.chess.fen();
+                san = move.san;
+                piece = move.piece;
+            } else {
+                // Dummy-Modus → nur visuelles Board
+                piece = this.board.getPiece(from);
+                if (!piece) return false;
+
+                await this.board.movePiece(from, to, true);
+                fen = this.board.getPosition();
+                san = `${from}-${to}`;
+            }
+
+            // BranchPoint für Zugbaum
+            const branchPoint = this.current || this.root;
+
+            // Prüfen lineare Fortsetzung
+            if (branchPoint.next && branchPoint.next.san === san) {
+                this.current = branchPoint.next;
+                this.updateBoardToNode(this.current);
+                this.renderMoves();
+                return true;
+            }
+
+            // Prüfen Varianten
+            if (branchPoint.variations?.length) {
+                for (const variation of branchPoint.variations) {
+                    if (variation.length > 0 && variation[0].san === san) {
+                        this.current = variation[0];
+                        this.updateBoardToNode(this.current);
+                        this.renderMoves();
+                        return true;
+                    }
+                }
+            }
+
+            // Neuer Move → über History hinzufügen, auch Dummy
+            let newMove;
+            try {
+                newMove = this.pgnObj.history.addMove(san, branchPoint);
+                newMove.fen = fen;
+                newMove.piece = piece;
+                newMove.from = from;
+                newMove.to = to;
+                newMove.color = color;
+            } catch (err) {
+                console.error("addMove failed", err);
+                return false;
+            }
+
+            // Root.next setzen, falls nötig
+            if (!this.root.next && this.pgnObj.history.moves.length > 0) {
+                this.root.next = this.pgnObj.history.moves[0];
+                this.root.variation = this.pgnObj.history.moves;
+            }
+
+            this.current = newMove;
+            this.updateBoardToNode(this.current);
+            this.renderMoves();
+            return true;
+        });
+    }
+
+    renderFenHeader(meta = {}) {
+        const { author, source, stipulation } = meta;
+        this.headerElement.innerHTML = `
+            <div class="header-line1">${author || ''}</div>
+            <div class="header-line2">${source || ''}${stipulation ? ' · ' + stipulation : ''}</div>
+        `;
+    }
+        /* === Ende des FEN-Abschnitts === */
 
     renderMoves() {
         this.movesContainer.innerHTML = '';
@@ -263,7 +421,7 @@ export class PgnViewer {
                 const zeroBased = Math.floor((move.ply - 1) / 2);
                 const startMoveNumber = Math.floor(this.startPly / 2) + 1;
                 const moveNumber = startMoveNumber + zeroBased;
-
+                const moveSan = move.san || move.notation || '(?)';
                 const isFirstInVariation = !!(move.variation && move.variation[0] === move);
 
                 let prefix = '';
@@ -274,7 +432,7 @@ export class PgnViewer {
 
                 const span = document.createElement('span');
                 span.className = 'move' + (move === this.current ? ' active' : '');
-                span.textContent = prefix + (move.san || '(?)');
+                span.textContent = prefix + (moveSan);
                 span.style.cursor = 'pointer';
                 span.addEventListener('click', () => {
                     this.current = move;
@@ -327,11 +485,12 @@ export class PgnViewer {
             });
         };
 
-        if (this.pgnObj?.history?.moves?.length) {
-            renderNode(this.pgnObj.history.moves, this.movesContainer, false);
-        }
-
-       this.scrollActiveMoveIntoView();
+        const movesSource = this.mode === 'pgn'
+            ? this.pgnObj?.history?.moves || []
+            : this.moves || [];
+        renderNode(movesSource, this.movesContainer, false);
+        
+        this.scrollActiveMoveIntoView();
     }
 
     scrollActiveMoveIntoView() {
@@ -369,14 +528,26 @@ export class PgnViewer {
 
         scroller.scrollTo({
             top: targetScrollTop,
-            behavior: 'smooth'
+            behavior: 'auto'
         });
     }
 
     updateBoardToNode(node) {
-        const fen = node?.fen || this.startFen;
-        this.chess.load(fen);
-        this.board.setPosition(fen, false);
+        if (!node) {
+            this.board.setPosition(this.startFen, false);
+            return;
+        }
+
+        const fen = node.fen || this.startFen;
+
+        // PGN oder legales FEN → chess.js laden
+        if (this.mode === 'pgn' || !this.dummyBoard) {
+            this.chess.load(fen);
+            this.board.setPosition(fen, false);
+        } else {
+            // Dummy/FEN → Board direkt setzen
+            this.board.setPosition(fen, false);
+        }
     }
 
     getBranchPoint(move) {
@@ -480,6 +651,39 @@ export class PgnViewer {
         }
     }
 
+    undoMove() {
+        if (!this.current) return;
+
+        // Letzter Zug in History
+        let prevMove = this.current.previous || null;
+
+        if (!this.dummyBoard) {
+            // Legal FEN / PGN → chess.js verwenden
+            if (this.current.fen) {
+                this.chess.load(prevMove?.fen || this.startFen);
+            } else {
+                this.chess.undo();
+            }
+        } else {
+            // Dummy-Board → nur FEN setzen
+            this.board.setPosition(prevMove?.fen || this.startFen, true);
+        }
+
+        // Aktueller Move zurücksetzen
+        this.current = prevMove;
+
+        this.renderMoves();
+    }
+
+   
+    resetFen() {
+        this.chess.load(this.startFen);
+        this.moves = [];
+        this.board.setPosition(this.startFen, false);
+        this.renderMoves();
+    }
+
+    /* Steuerung durch Varianten mit Pfeiltasten */
     switchVariant(direction = 1) {
         if (this.current?.variations?.length) {
             const variants = this.current.variations;
@@ -508,8 +712,7 @@ export class PgnViewer {
         this.renderMoves();
     }
 
-    /* Wandelt einen NAG-Code in ein Symbol um     */
-// In deiner Klasse (z. B. cm-pgnviewer.js)
+    /* Wandelt einen NAG-Code in ein Symbol um */
     nagToSymbol(nag) {
         // Mapping vom Parser-Code zum darzustellenden Symbol
         var map = {
