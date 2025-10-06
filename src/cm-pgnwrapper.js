@@ -164,7 +164,11 @@ function createViewerFromElement(el, index, type) {
   // Viewer-Instanz je nach Typ
   let viewerInstance;
   if (type === "pgn") {
-    viewerInstance = new PgnViewer(ids, contentPgn);
+    const meta = {
+      // für spätere Erweiterungen
+      dummy: false //false = Zugvalidierung erwünscht
+    }
+    viewerInstance = new PgnViewer(ids, {pgn: contentPgn, meta});
   } 
   else if (type === "board") {
     const meta = {
