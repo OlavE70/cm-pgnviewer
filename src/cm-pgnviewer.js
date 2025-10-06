@@ -1,6 +1,7 @@
 // cm-pgnviewer.js
 import { Pgn as cmPgn } from 'cm-pgn';
 import { Chessboard, COLOR, FEN } from 'cm-chessboard';
+import { PromotionDialog } from 'cm-chessboard/extensions/promotionDialog.js';
 // @ts-ignore
 import { Chess } from 'chess.mjs/src/Chess.js';
 
@@ -30,11 +31,11 @@ export class PgnViewer {
                 },
                 animationDuration: 300
             },
-            position: FEN.start
+            position: FEN.start,
+            extensions: [{class: PromotionDialog}]
         });
 
         this.chess = new Chess();
-
         this.initBoardPGN();
 
         if (typeof data === "string") {
@@ -222,7 +223,8 @@ export class PgnViewer {
 
     loadPgn(pgnText) {
         try {
-            this.pgnObj = new cmPgn(pgnText);
+            this.pgnText = pgnText;
+            this.pgnObj = new cmPgn(this.pgnText);
             this.startFen = this.pgnObj.history?.props?.setUpFen || FEN.start;
             this.startPly = this.pgnObj.history?.props?.startPly || 0;
             this.root.variation = this.pgnObj.history?.moves || [];
@@ -288,7 +290,7 @@ export class PgnViewer {
         }
 
         this.board.setPosition(this.chess.fen(), false);
-        this.moves = [];
+        this.initFenMoves();
         this.renderFenHeader(meta);
         this.renderMoves();
         this.registerFenInput();
@@ -304,40 +306,41 @@ export class PgnViewer {
         return fen;
     }
 
+    initFenMoves() {
+        this.startFen = this.startFen || FEN.start;
+        this.startPly = 0;
+
+        // Root-Knoten als Dummy mit Start-FEN
+        this.root = {
+            fen: this.startFen,
+            ply: this.startPly,
+            previous: null,
+            next: null,
+            variation: []
+        };
+
+        // moves[] für renderMoves() vorbereiten
+        this.moves = this.root.variation;
+        this.current = null;
+    }
+
+
     registerFenInput() {
         this.board.enableMoveInput(async (event) => {
             if (event.type !== "validateMoveInput") return true;
 
             const from = event.squareFrom;
             const to = event.squareTo;
+            const piece = this.board.getPiece(from);
+            if (!piece) return false;
 
-            // Ply / Farbe
-            const ply = this.current ? this.current.ply + 1 : 1;
-            const color = ply % 2 === 1 ? 'w' : 'b';
+            await this.board.movePiece(from, to, true);
+            const fen = this.board.getPosition();
+            const san = `${from}-${to}`;
 
-            let fen, san, piece;
-
-            if (!this.dummyBoard) {
-                // Legal FEN → chess.js validiert
-                const lastFen = this.current?.fen || this.startFen;
-                this.chess.load(lastFen);
-                const move = this.chess.move({ from, to, promotion: 'q' });
-                if (!move) return false;
-                fen = this.chess.fen();
-                san = move.san;
-                piece = move.piece;
-            } else {
-                // Dummy-Modus → nur visuelles Board
-                piece = this.board.getPiece(from);
-                if (!piece) return false;
-
-                await this.board.movePiece(from, to, true);
-                fen = this.board.getPosition();
-                san = `${from}-${to}`;
-            }
-
-            // BranchPoint für Zugbaum
             const branchPoint = this.current || this.root;
+            const ply = (branchPoint.ply || 0) + 1;
+            const color = ply % 2 === 1 ? 'w' : 'b';
 
             // Prüfen lineare Fortsetzung
             if (branchPoint.next && branchPoint.next.san === san) {
@@ -350,7 +353,7 @@ export class PgnViewer {
             // Prüfen Varianten
             if (branchPoint.variations?.length) {
                 for (const variation of branchPoint.variations) {
-                    if (variation.length > 0 && variation[0].san === san) {
+                    if (variation[0]?.san === san) {
                         this.current = variation[0];
                         this.updateBoardToNode(this.current);
                         this.renderMoves();
@@ -359,24 +362,25 @@ export class PgnViewer {
                 }
             }
 
-            // Neuer Move → über History hinzufügen, auch Dummy
-            let newMove;
-            try {
-                newMove = this.pgnObj.history.addMove(san, branchPoint);
-                newMove.fen = fen;
-                newMove.piece = piece;
-                newMove.from = from;
-                newMove.to = to;
-                newMove.color = color;
-            } catch (err) {
-                console.error("addMove failed", err);
-                return false;
-            }
+            // Neuen Move erstellen
+            const newMove = {
+                san,
+                from, to, piece, color,
+                fen,
+                ply,
+                previous: branchPoint,
+                next: null,
+                variation: []
+            };
 
-            // Root.next setzen, falls nötig
-            if (!this.root.next && this.pgnObj.history.moves.length > 0) {
-                this.root.next = this.pgnObj.history.moves[0];
-                this.root.variation = this.pgnObj.history.moves;
+            // Hauptlinie erweitern, wenn kein nächster Zug existiert
+            if (!branchPoint.next) {
+                branchPoint.next = newMove;
+                branchPoint.variation.push(newMove);
+            } else {
+                // Abweichender Zug → neue Variante
+                branchPoint.variations = branchPoint.variations || [];
+                branchPoint.variations.push([newMove]);
             }
 
             this.current = newMove;
@@ -485,7 +489,7 @@ export class PgnViewer {
             });
         };
 
-        const movesSource = this.mode === 'pgn'
+        const movesSource = (this.mode === 'pgn' || this.mode === 'board')
             ? this.pgnObj?.history?.moves || []
             : this.moves || [];
         renderNode(movesSource, this.movesContainer, false);
@@ -654,31 +658,53 @@ export class PgnViewer {
     undoMove() {
         if (!this.current) return;
 
-        // Letzter Zug in History
-        let prevMove = this.current.previous || null;
+        // Prüfen, ob wir uns auf der Hauptlinie befinden
+        const branchPoint = this.current.previous;
+        const isMainLine = !branchPoint || branchPoint.next === this.current;
 
-        if (!this.dummyBoard) {
-            // Legal FEN / PGN → chess.js verwenden
-            if (this.current.fen) {
-                this.chess.load(prevMove?.fen || this.startFen);
-            } else {
-                this.chess.undo();
-            }
-        } else {
-            // Dummy-Board → nur FEN setzen
-            this.board.setPosition(prevMove?.fen || this.startFen, true);
+        if (!isMainLine) {
+            console.warn("Undo nur für die Hauptlinie möglich");
+            return;
         }
 
-        // Aktueller Move zurücksetzen
-        this.current = prevMove;
+        const lastMove = this.current;
+        this.current = lastMove.previous || null;
 
+        let fenToLoad;
+        if (this.current) {
+            fenToLoad = this.current.fen;
+        } else {
+            fenToLoad = this.startFen;
+        }
+
+        if (this.mode === "pgn" || this.mode === "board") {
+            // Chess.js synchronisieren
+            this.chess.load(fenToLoad);
+            this.board.setPosition(fenToLoad, true);
+            this.renderMoves();
+        } 
+        // Board setzen
+        this.board.setPosition(fenToLoad, true);
         this.renderMoves();
     }
-
-   
+  
     resetFen() {
+        this.initFenMoves();
+
         this.chess.load(this.startFen);
-        this.moves = [];
+        if (this.pgnText) {
+            this.pgnObj = new cmPgn(this.pgnText);
+        }
+        if (this.mode=='board') {
+            this.root = {
+                fen: this.startFen,
+                ply: this.startPly,
+                previous: null,
+                next:  this.pgnObj.history?.moves?.[0] || null,
+                variation: this.pgnObj.history?.moves || []
+            };
+        }
+        this.current = null;
         this.board.setPosition(this.startFen, false);
         this.renderMoves();
     }

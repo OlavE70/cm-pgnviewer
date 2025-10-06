@@ -167,11 +167,21 @@ function createViewerFromElement(el, index, type) {
     viewerInstance = new PgnViewer(ids, contentPgn);
   } 
   else if (type === "board") {
-    const meta = { dummy: false }; 
+    const meta = {
+      author: el.getAttribute('author') || '',
+      source: el.getAttribute('source') || '',
+      stipulation: el.getAttribute('stipulation') || '',
+      dummy: false
+    };
     viewerInstance = new PgnViewer(ids, { type: "board", fen: content, meta });
   }
   else {
-    const meta = { dummy: true };
+    const meta = {
+      author: el.getAttribute('author') || '',
+      source: el.getAttribute('source') || '',
+      stipulation: el.getAttribute('stipulation') || '',
+      dummy: true
+    };
     viewerInstance = new PgnViewer(ids, { type: "fen", fen: content, meta });
   }
 
