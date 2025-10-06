@@ -5,23 +5,23 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: "cm-chessboard",
+        find: /^cm-chessboard$/,
         replacement: path.resolve(__dirname, "../cm-chessboard/src/Chessboard.js"),
       },
       {
-        find: "cm-chessboard/",
-        replacement: path.resolve(__dirname, "../cm-chessboard/src/"),
+        find: /^cm-chessboard\/(.*)/,
+        replacement: path.resolve(__dirname, "../cm-chessboard/src/$1"),
       },
       {
-        find: "cm-pgn",
+        find: /^cm-pgn$/,
         replacement: path.resolve(__dirname, "../cm-pgn/src/Pgn.js"),
       },
       {
-        find: "cm-pgn/",
-        replacement: path.resolve(__dirname, "../cm-pgn/src/"),
+        find: /^cm-pgn\/(.*)/,
+        replacement: path.resolve(__dirname, "../cm-pgn/src/$1"),
       },
       {
-        find: "chess.mjs/src/Chess.js",
+        find: /^chess\.mjs\/src\/Chess\.js$/,
         replacement: path.resolve(__dirname, "../chess.mjs/src/Chess.js"),
       },
     ],

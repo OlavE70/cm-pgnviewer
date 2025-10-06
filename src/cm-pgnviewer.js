@@ -1,7 +1,10 @@
 // cm-pgnviewer.js
 import { Pgn as cmPgn } from 'cm-pgn';
 import { Chessboard, COLOR, FEN } from 'cm-chessboard';
-import { PromotionDialog } from 'cm-chessboard/extensions/promotionDialog.js';
+import { PromotionDialog } from 'cm-chessboard/extensions/promotion-dialog/PromotionDialog.js';
+// ExtendedHistory erweitert cm-pgn/History um Zugzurücknahme und optionale statt strikte Zugvalidierung
+import { ExtendedHistory } from './ExtendedHistory.js';
+
 // @ts-ignore
 import { Chess } from 'chess.mjs/src/Chess.js';
 
@@ -38,20 +41,16 @@ export class PgnViewer {
         this.chess = new Chess();
         this.initBoardPGN();
 
-        if (typeof data === "string") {
-            this.mode = "pgn";
-            this.loadPgn(data);
-        } else if (data?.type === "board") {
-            this.mode = "board";
-            const fen = this.completeFen(data.fen);
+        this.mode = data.type;
+
+        if (this.mode==='pgn'){
+            this.loadBoard(data.game, data.meta)
+        } else  {
+            const fen = this.completeFen(data.game);
             const miniPgn = `[SetUp "1"]
                 [FEN "${fen}"]`;
             this.loadBoard(miniPgn, data.meta);
-        } else if (data?.type === "fen") {
-            this.mode = "fen";
-            this.loadFen(data.fen, data.meta);
-        }
-
+        } 
         this.registerControls();
     }
 
@@ -65,7 +64,8 @@ export class PgnViewer {
             ply: this.startPly,
             previous: null,
             next: null,
-            variation: this.pgnObj.history?.moves || []
+            variation: this.pgnObj.history?.moves || [],
+            san: null
         };
         this.current = null;
         this.board.setPosition(this.startFen, false);
@@ -154,30 +154,35 @@ export class PgnViewer {
         }
     }
 
-    /* === Abschnitt für this.mode = "board" === */
-    loadBoard(pgn, meta) {
-        this.meta = meta;
-        this.loadPgn(pgn);
-        this.renderFenHeader(this.meta);
-    }
-
     /* === Abschnitt speziell für PGN === */
     registerBoardInput() {
         this.board.enableMoveInput((event) => {
             if (event.type === "validateMoveInput") {
                 const { squareFrom, squareTo } = event;
+                let move = null;
 
                 this.chess.load(this.current?.fen || this.startFen);
-                const move = this.chess.move({
-                    from: squareFrom,
-                    to: squareTo,
-                    promotion: "q"
-                });
-                if (!move) return false;
+
+                if (!this.dummyBoard) {
+                    move = this.chess.move({
+                        from: squareFrom,
+                        to: squareTo,
+                        promotion: "q"
+                    });
+                    if (!move) return false;
+                } else {
+                    move = this.chess.move({ 
+                        from: squareFrom, 
+                        to: squareTo, 
+                        promotion: "q" 
+                    }, { sloppy: true });
+                    this.chess.undo();
+                }
 
                 const san = move.san;
                 const branchPoint = this.current || this.root;
 
+                // === Hauptlinie prüfen ===
                 if (branchPoint.next && branchPoint.next.san === san) {
                     this.current = branchPoint.next;
                     this.updateBoardToNode(this.current);
@@ -185,8 +190,9 @@ export class PgnViewer {
                     return true;
                 }
 
-                if (branchPoint.variations?.length) {
-                    for (const variation of branchPoint.variations) {
+                // Alle Varianten prüfen
+                if (branchPoint.next?.variations?.length) {
+                    for (const variation of branchPoint.next?.variations) {
                         if (variation.length > 0 && variation[0].san === san) {
                             this.current = variation[0];
                             this.updateBoardToNode(this.current);
@@ -196,7 +202,9 @@ export class PgnViewer {
                     }
                 }
 
+                // Zug existiert noch nicht -> hinzufügen
                 let prev = this.current || null;
+                // Zug existiert nicht -> Variante anlegen
                 if (!prev && this.root?.next) prev = this.root;
 
                 let newMove;
@@ -207,13 +215,19 @@ export class PgnViewer {
                     return false;
                 }
 
+                // Falls ohne root.next -> virtual root auf erste Hauptlinie setzen
                 if (!this.root.next && this.pgnObj.history.moves.length > 0) {
                     this.root.next = this.pgnObj.history.moves[0];
                     this.root.variation = this.pgnObj.history.moves;
                 }
 
                 this.current = newMove;
-                this.board.setPosition(this.chess.fen(), true);
+                if (!this.dummyBoard) {
+                    this.board.setPosition(this.chess.fen(), true);
+                } else {
+                    this.board.movePiece(squareFrom, squareTo, false);
+                }
+
                 this.renderMoves();
                 return true;
             }
@@ -221,21 +235,39 @@ export class PgnViewer {
         });
     }
 
-    loadPgn(pgnText) {
+    loadBoard(pgn, meta) {
         try {
-            this.pgnText = pgnText;
-            this.pgnObj = new cmPgn(this.pgnText);
+            this.pgnText = pgn;
+            this.meta = meta;
+            this.dummyBoard = meta?.dummy || false; // Standard: Zugvalidierung
+
+            const pgnObj = new cmPgn(this.pgnText);
+            pgnObj.history = ExtendedHistory.fromHistory(pgnObj.history);
+            this.pgnObj = pgnObj;
+            this.pgnObj.history.setValidation(!this.dummyBoard); // Zugvalidierung ein- oder ausschalten
+
             this.startFen = this.pgnObj.history?.props?.setUpFen || FEN.start;
             this.startPly = this.pgnObj.history?.props?.startPly || 0;
-            this.root.variation = this.pgnObj.history?.moves || [];
-            this.root.next = this.pgnObj.history?.moves?.[0] || null;
+
+            this.root = {
+                ply: 0,
+                color: (this.startFen.includes(' w ') ? 'w' : 'b'),
+                fen: this.startFen,
+                san: null,
+                next: this.pgnObj.history?.moves?.[0] || null,
+                variation: this.pgnObj.history?.moves || [],
+                previous: null
+            };           
+
             this.current = null;
             this.board.setPosition(this.startFen, false);
             if (this.mode === "pgn") {
                 this.renderPgnHeader();
+            } else {
+                this.renderAlternativeHeader(meta);
             }
         } catch (e) {
-            console.error("PGN parse failed", e);
+            console.error("Parse failed", e);
             this.initBoardPGN();
             if (this.headerElement) {
                 this.headerElement.innerHTML = "";
@@ -244,6 +276,7 @@ export class PgnViewer {
         }
 
         this.renderMoves();
+
         this.registerBoardInput();
     }
 
@@ -274,28 +307,7 @@ export class PgnViewer {
     }
     /* === Ende des PGN-Abschnitts === */
 
-    /* === Abschnitt speziell für FEN / Schachkomposition === */
-    loadFen(fen, meta = {}) {
-        this.meta = meta;
-
-        // Board mit oder ohne Validitätsprüfung der Züge?
-        this.dummyBoard = meta?.dummy || false;
-
-        this.startFen = this.completeFen(fen);
-        try {
-            this.chess.load(this.startFen);
-        } catch {
-            console.warn("Invalid or partial FEN, using default setup fallback.");
-            this.chess.reset();
-        }
-
-        this.board.setPosition(this.chess.fen(), false);
-        this.initFenMoves();
-        this.renderFenHeader(meta);
-        this.renderMoves();
-        this.registerFenInput();
-    }
-
+    /* === Abschnitt speziell für FEN / Schachkomposition, Aufgaben etc. === */
     completeFen(fen) {
         const parts = fen.trim().split(/\s+/);
         if (parts.length === 1) return `${parts[0]} w - - 0 1`;
@@ -306,98 +318,14 @@ export class PgnViewer {
         return fen;
     }
 
-    initFenMoves() {
-        this.startFen = this.startFen || FEN.start;
-        this.startPly = 0;
-
-        // Root-Knoten als Dummy mit Start-FEN
-        this.root = {
-            fen: this.startFen,
-            ply: this.startPly,
-            previous: null,
-            next: null,
-            variation: []
-        };
-
-        // moves[] für renderMoves() vorbereiten
-        this.moves = this.root.variation;
-        this.current = null;
-    }
-
-
-    registerFenInput() {
-        this.board.enableMoveInput(async (event) => {
-            if (event.type !== "validateMoveInput") return true;
-
-            const from = event.squareFrom;
-            const to = event.squareTo;
-            const piece = this.board.getPiece(from);
-            if (!piece) return false;
-
-            await this.board.movePiece(from, to, true);
-            const fen = this.board.getPosition();
-            const san = `${from}-${to}`;
-
-            const branchPoint = this.current || this.root;
-            const ply = (branchPoint.ply || 0) + 1;
-            const color = ply % 2 === 1 ? 'w' : 'b';
-
-            // Prüfen lineare Fortsetzung
-            if (branchPoint.next && branchPoint.next.san === san) {
-                this.current = branchPoint.next;
-                this.updateBoardToNode(this.current);
-                this.renderMoves();
-                return true;
-            }
-
-            // Prüfen Varianten
-            if (branchPoint.variations?.length) {
-                for (const variation of branchPoint.variations) {
-                    if (variation[0]?.san === san) {
-                        this.current = variation[0];
-                        this.updateBoardToNode(this.current);
-                        this.renderMoves();
-                        return true;
-                    }
-                }
-            }
-
-            // Neuen Move erstellen
-            const newMove = {
-                san,
-                from, to, piece, color,
-                fen,
-                ply,
-                previous: branchPoint,
-                next: null,
-                variation: []
-            };
-
-            // Hauptlinie erweitern, wenn kein nächster Zug existiert
-            if (!branchPoint.next) {
-                branchPoint.next = newMove;
-                branchPoint.variation.push(newMove);
-            } else {
-                // Abweichender Zug → neue Variante
-                branchPoint.variations = branchPoint.variations || [];
-                branchPoint.variations.push([newMove]);
-            }
-
-            this.current = newMove;
-            this.updateBoardToNode(this.current);
-            this.renderMoves();
-            return true;
-        });
-    }
-
-    renderFenHeader(meta = {}) {
+    renderAlternativeHeader(meta = {}) {
         const { author, source, stipulation } = meta;
         this.headerElement.innerHTML = `
             <div class="header-line1">${author || ''}</div>
             <div class="header-line2">${source || ''}${stipulation ? ' · ' + stipulation : ''}</div>
         `;
     }
-        /* === Ende des FEN-Abschnitts === */
+    /* === Ende des Abschnitts für FEN / Schachkomposition, Aufgaben etc. === */
 
     renderMoves() {
         this.movesContainer.innerHTML = '';
@@ -489,9 +417,7 @@ export class PgnViewer {
             });
         };
 
-        const movesSource = (this.mode === 'pgn' || this.mode === 'board')
-            ? this.pgnObj?.history?.moves || []
-            : this.moves || [];
+        const movesSource = this.pgnObj?.history?.moves || []
         renderNode(movesSource, this.movesContainer, false);
         
         this.scrollActiveMoveIntoView();
@@ -544,8 +470,8 @@ export class PgnViewer {
 
         const fen = node.fen || this.startFen;
 
-        // PGN oder legales FEN → chess.js laden
-        if (this.mode === 'pgn' || !this.dummyBoard) {
+        // Bei erwünschter Zugvalidierung → chess.js laden
+        if (!this.dummyBoard) {
             this.chess.load(fen);
             this.board.setPosition(fen, false);
         } else {
@@ -656,57 +582,19 @@ export class PgnViewer {
     }
 
     undoMove() {
-        if (!this.current) return;
-
-        // Prüfen, ob wir uns auf der Hauptlinie befinden
-        const branchPoint = this.current.previous;
-        const isMainLine = !branchPoint || branchPoint.next === this.current;
-
-        if (!isMainLine) {
-            console.warn("Undo nur für die Hauptlinie möglich");
-            return;
+        if (this.current && this.pgnObj?.history) {
+            this.current = this.pgnObj.history.removeMove(this.current);
+            if (this.current === null) {
+                this.resetFen();
+            } else {
+                this.updateBoardToNode(this.current || null);
+                this.renderMoves();
+            }
         }
-
-        const lastMove = this.current;
-        this.current = lastMove.previous || null;
-
-        let fenToLoad;
-        if (this.current) {
-            fenToLoad = this.current.fen;
-        } else {
-            fenToLoad = this.startFen;
-        }
-
-        if (this.mode === "pgn" || this.mode === "board") {
-            // Chess.js synchronisieren
-            this.chess.load(fenToLoad);
-            this.board.setPosition(fenToLoad, true);
-            this.renderMoves();
-        } 
-        // Board setzen
-        this.board.setPosition(fenToLoad, true);
-        this.renderMoves();
     }
   
     resetFen() {
-        this.initFenMoves();
-
-        this.chess.load(this.startFen);
-        if (this.pgnText) {
-            this.pgnObj = new cmPgn(this.pgnText);
-        }
-        if (this.mode=='board') {
-            this.root = {
-                fen: this.startFen,
-                ply: this.startPly,
-                previous: null,
-                next:  this.pgnObj.history?.moves?.[0] || null,
-                variation: this.pgnObj.history?.moves || []
-            };
-        }
-        this.current = null;
-        this.board.setPosition(this.startFen, false);
-        this.renderMoves();
+        this.loadBoard(this.pgnText, this.meta);
     }
 
     /* Steuerung durch Varianten mit Pfeiltasten */

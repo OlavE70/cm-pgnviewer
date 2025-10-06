@@ -7,6 +7,9 @@
  */
 
 import { History } from "cm-pgn/history.js"
+// @ts-ignore
+import { Chess } from 'chess.mjs/src/Chess.js';
+
 
 export class ExtendedHistory extends History {
 
@@ -15,6 +18,13 @@ export class ExtendedHistory extends History {
             validateMoves: true, // Schalter für optionale Validierung
             ...props
         })
+    }
+
+    // Wrapper zur Übernahme der Original-History aus cm-pgn
+    static fromHistory(history) {
+        const newHistory = new ExtendedHistory(null, history.props);
+        newHistory.moves = history.moves; // komplette Struktur übernehmen
+        return newHistory;
     }
 
     /** Prüft, ob ein Zug in der Hauptlinie ist */
@@ -106,33 +116,51 @@ export class ExtendedHistory extends History {
 
     /** addMove mit optionaler Validierung */
     addMove(notation, previous = null, sloppy = true) {
+        // === 1️⃣ Wenn Validierung aktiv → Original verwenden ===
         if (this.props.validateMoves) {
-            return super.addMove(notation, previous, sloppy)
+            return super.addMove(notation, previous, sloppy);
         }
 
-        // Freier Zugmodus: ohne Validierung
+        // === 2️⃣ Freier Zugmodus (ohne Validierung) ===
+        // Wir erzeugen eine neue Chess-Instanz, um aus notation Metadaten zu holen
+        const chess = new Chess(previous?.fen || this.props.setUpFen || undefined, {
+            chess960: !!this.props.chess960
+        });
+
+        // Versuchen, Zug trotzdem "virtuell" auszuführen (z. B. für SAN)
+        const applied = chess.move(notation, { sloppy: true });
+        const fenAfter = applied ? chess.fen() : (previous?.fen || this.props.setUpFen || chess.fen());
+
+        // === 3️⃣ Move-Grundstruktur ===
         const move = {
-            san: notation,
             notation,
+            san: applied?.san || notation,
             previous,
             ply: previous ? previous.ply + 1 : 1,
             variation: previous ? previous.variation : this.moves,
             variations: [],
-            fen: null,
-            uci: null
-        }
+            fen: fenAfter,
+            uci: applied ? (applied.from + applied.to + (applied.promotion || "")) : null,
+            from: applied?.from || notation.slice(0, 2),
+            to: applied?.to || notation.slice(2, 4),
+            piece: applied?.piece || "?",
+            captured: applied?.captured || null,
+            flags: applied?.flags || "",
+            color: applied?.color || (previous?.color === "w" ? "b" : "w")
+        };
 
+        // === 4️⃣ In die History einfügen ===
         if (previous) {
-            previous.next = move
-            previous.variation.push(move)
+            previous.next = move;
+            previous.variation.push(move);
         } else {
-            this.moves.push(move)
+            this.moves.push(move);
         }
 
-        return move
+        return move;
     }
 
-    /** Aktiviert oder deaktiviert die Zugvalidierung */
+/** Aktiviert oder deaktiviert die Zugvalidierung */
     setValidation(enabled) {
         this.props.validateMoves = !!enabled
     }

@@ -168,7 +168,7 @@ function createViewerFromElement(el, index, type) {
       // für spätere Erweiterungen
       dummy: false //false = Zugvalidierung erwünscht
     }
-    viewerInstance = new PgnViewer(ids, {pgn: contentPgn, meta});
+    viewerInstance = new PgnViewer(ids, {type: "pgn", game: contentPgn, meta});
   } 
   else if (type === "board") {
     const meta = {
@@ -177,7 +177,7 @@ function createViewerFromElement(el, index, type) {
       stipulation: el.getAttribute('stipulation') || '',
       dummy: false
     };
-    viewerInstance = new PgnViewer(ids, { type: "board", fen: content, meta });
+    viewerInstance = new PgnViewer(ids, { type: "board", game: content, meta });
   }
   else {
     const meta = {
@@ -186,7 +186,7 @@ function createViewerFromElement(el, index, type) {
       stipulation: el.getAttribute('stipulation') || '',
       dummy: true
     };
-    viewerInstance = new PgnViewer(ids, { type: "fen", fen: content, meta });
+    viewerInstance = new PgnViewer(ids, { type: "fen", game: content, meta });
   }
 
   viewerContainer.style.visibility = 'visible';
