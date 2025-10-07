@@ -123,30 +123,41 @@ export class ExtendedHistory extends History {
 
         // === 2️⃣ Freier Zugmodus (ohne Validierung) ===
         // Wir erzeugen eine neue Chess-Instanz, um aus notation Metadaten zu holen
-        const chess = new Chess(previous?.fen || this.props.setUpFen || undefined, {
+        const startFen = previous?.fen || this.props.setUpFen || FEN.start;
+        const chess = new Chess(startFen, {
             chess960: !!this.props.chess960
         });
 
-        // Versuchen, Zug trotzdem "virtuell" auszuführen (z. B. für SAN)
-        const applied = chess.move(notation, { sloppy: true });
-        const fenAfter = applied ? chess.fen() : (previous?.fen || this.props.setUpFen || chess.fen());
+        // Versuche, den Zug als legalen oder sloppy-Move zu interpretieren
+        let applied = chess.move(notation, { sloppy: true });
+        if (applied) {
+            // Wir haben ein vollständiges Move-Objekt aus chess.js
+            applied.fen = chess.fen();
+        } else {
+            // Fallback: Zug nicht interpretierbar (z.B. kein gültiges SAN)
+            applied = {
+                san: notation,
+                notation,
+                from: this.guessFrom(notation),
+                to: this.guessTo(notation),
+                piece: this.guessPiece(notation),
+                color: previous?.color === 'w' ? 'b' : 'w',
+                captured: null,
+                flags: '',
+                fen: startFen,
+                uci: this.guessUci(notation),
+            };
+        }
 
-        // === 3️⃣ Move-Grundstruktur ===
+        //
+        // 3️⃣ Move-Objekt erweitern mit History-spezifischen Feldern
+        //
         const move = {
-            notation,
-            san: applied?.san || notation,
+            ...applied,
             previous,
             ply: previous ? previous.ply + 1 : 1,
             variation: previous ? previous.variation : this.moves,
             variations: [],
-            fen: fenAfter,
-            uci: applied ? (applied.from + applied.to + (applied.promotion || "")) : null,
-            from: applied?.from || notation.slice(0, 2),
-            to: applied?.to || notation.slice(2, 4),
-            piece: applied?.piece || "?",
-            captured: applied?.captured || null,
-            flags: applied?.flags || "",
-            color: applied?.color || (previous?.color === "w" ? "b" : "w")
         };
 
         // === 4️⃣ In die History einfügen ===
@@ -160,8 +171,28 @@ export class ExtendedHistory extends History {
         return move;
     }
 
+    guessFrom(notation) {
+        const match = notation.match(/([a-h][1-8])/g);
+        return match?.[0] || null;
+    }
+
+    guessTo(notation) {
+        const match = notation.match(/([a-h][1-8])/g);
+        return match?.[1] || null;
+    }
+
+    guessPiece(notation) {
+        const match = notation.match(/^[KQRNB]/);
+        return match ? match[0].toLowerCase() : 'p';
+    }
+
+    guessUci(notation) {
+        const match = notation.match(/^([a-h][1-8])([a-h][1-8])/);
+        return match ? match[0] : null;
+    }
+
 /** Aktiviert oder deaktiviert die Zugvalidierung */
     setValidation(enabled) {
-        this.props.validateMoves = !!enabled
+        this.props.validateMoves = enabled;
     }
 }

@@ -157,80 +157,79 @@ export class PgnViewer {
     /* === Abschnitt speziell für PGN === */
     registerBoardInput() {
         this.board.enableMoveInput((event) => {
-            if (event.type === "validateMoveInput") {
-                const { squareFrom, squareTo } = event;
-                let move = null;
+            if (event.type !== "validateMoveInput") return true;
 
-                this.chess.load(this.current?.fen || this.startFen);
+            const { squareFrom, squareTo } = event;
 
-                if (!this.dummyBoard) {
-                    move = this.chess.move({
-                        from: squareFrom,
-                        to: squareTo,
-                        promotion: "q"
-                    });
-                    if (!move) return false;
-                } else {
-                    move = this.chess.move({ 
-                        from: squareFrom, 
-                        to: squareTo, 
-                        promotion: "q" 
-                    }, { sloppy: true });
-                    this.chess.undo();
-                }
+            // Zug existiert noch nicht -> hinzufügen
+            let prev = this.current || null;
+            // Zug existiert nicht -> Variante anlegen
+            if (!prev && this.root?.next) prev = this.root;
 
-                const san = move.san;
-                const branchPoint = this.current || this.root;
+            // 1️⃣ Ausgangsstellung laden
+            const baseFen = this.current?.fen || this.startFen;
+            this.chess.load(baseFen);
 
-                // === Hauptlinie prüfen ===
-                if (branchPoint.next && branchPoint.next.san === san) {
-                    this.current = branchPoint.next;
-                    this.updateBoardToNode(this.current);
-                    this.renderMoves();
-                    return true;
-                }
+            // 2️⃣ Versuche, den Zug auszuführen — auch bei dummyBoard (sloppy)
+            let moveObj = this.chess.move(
+                { from: squareFrom, to: squareTo, promotion: "q" },
+                { sloppy: true }
+            );
 
-                // Alle Varianten prüfen
-                if (branchPoint.next?.variations?.length) {
-                    for (const variation of branchPoint.next?.variations) {
-                        if (variation.length > 0 && variation[0].san === san) {
-                            this.current = variation[0];
-                            this.updateBoardToNode(this.current);
-                            this.renderMoves();
-                            return true;
-                        }
-                    }
-                }
+            // Wenn der Zug legal war, SAN übernehmen
+            let san = moveObj?.san;
+            if (!san && this.dummyBoard) {
+                // Sloppy-Parser lieferte kein Ergebnis -> Fallback auf reine Algebraik
+                san = `${squareFrom}${squareTo}`;
+            }
 
-                // Zug existiert noch nicht -> hinzufügen
-                let prev = this.current || null;
-                // Zug existiert nicht -> Variante anlegen
-                if (!prev && this.root?.next) prev = this.root;
+            // 3️⃣ Zug prüfen: existiert er schon in der Hauptlinie oder Variante?
+            const branchPoint = prev || this.root;
 
-                let newMove;
-                try {
-                    newMove = this.pgnObj.history.addMove(san, prev);
-                } catch (err) {
-                    console.error("addMove failed", err);
-                    return false;
-                }
-
-                // Falls ohne root.next -> virtual root auf erste Hauptlinie setzen
-                if (!this.root.next && this.pgnObj.history.moves.length > 0) {
-                    this.root.next = this.pgnObj.history.moves[0];
-                    this.root.variation = this.pgnObj.history.moves;
-                }
-
-                this.current = newMove;
-                if (!this.dummyBoard) {
-                    this.board.setPosition(this.chess.fen(), true);
-                } else {
-                    this.board.movePiece(squareFrom, squareTo, false);
-                }
-
+            if (branchPoint.next && branchPoint.next.san === san) {
+                this.current = branchPoint.next;
+                this.updateBoardToNode(this.current);
                 this.renderMoves();
                 return true;
             }
+
+            if (branchPoint.next?.variations?.length) {
+                for (const variation of branchPoint.next?.variations) {
+                    if (variation.length > 0 && variation[0].san === san) {
+                        this.current = variation[0];
+                        this.updateBoardToNode(this.current);
+                        this.renderMoves();
+                        return true;
+                    }
+                }
+            }
+
+            // 4️⃣ Neuer Zug → ExtendedHistory.addMove
+            let newMove;
+            try {
+                newMove = this.pgnObj.history.addMove(san, prev);
+            } catch (err) {
+                console.error("addMove failed", err);
+                return false;
+            }
+
+            // 5️⃣ Root initialisieren, falls nötig
+            if (!this.root.next && this.pgnObj.history.moves.length > 0) {
+                this.root.next = this.pgnObj.history.moves[0];
+                this.root.variation = this.pgnObj.history.moves;
+            }
+
+            // 6️⃣ Board aktualisieren
+            this.current = newMove;
+            if (!this.dummyBoard) {
+                // normales Board: Chess.js hat den Zug schon ausgeführt
+                this.board.setPosition(this.chess.fen(), true);
+            } else {
+                // Dummy-Board: nur visuell verschieben
+                this.board.movePiece(squareFrom, squareTo, false);
+            }
+
+            this.renderMoves();
             return true;
         });
     }
