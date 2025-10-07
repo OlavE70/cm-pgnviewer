@@ -166,11 +166,11 @@ export class PgnViewer {
             // Zug existiert nicht -> Variante anlegen
             if (!prev && this.root?.next) prev = this.root;
 
-            // 1️⃣ Ausgangsstellung laden
+            // Ausgangsstellung laden
             const baseFen = this.current?.fen || this.startFen;
             this.chess.load(baseFen);
 
-            // 2️⃣ Versuche, den Zug auszuführen — auch bei dummyBoard (sloppy)
+            // Versuche, den Zug auszuführen — auch bei dummyBoard (sloppy)
             let moveObj = this.chess.move(
                 { from: squareFrom, to: squareTo, promotion: "q" },
                 { sloppy: true }
@@ -183,7 +183,7 @@ export class PgnViewer {
                 san = `${squareFrom}${squareTo}`;
             }
 
-            // 3️⃣ Zug prüfen: existiert er schon in der Hauptlinie oder Variante?
+            // Zug prüfen: existiert er schon in der Hauptlinie oder Variante?
             const branchPoint = prev || this.root;
 
             if (branchPoint.next && branchPoint.next.san === san) {
@@ -204,23 +204,7 @@ export class PgnViewer {
                 }
             }
 
-            // 4️⃣ Neuer Zug → ExtendedHistory.addMove
-            let newMove;
-            try {
-                newMove = this.pgnObj.history.addMove(san, prev);
-            } catch (err) {
-                console.error("addMove failed", err);
-                return false;
-            }
-
-            // 5️⃣ Root initialisieren, falls nötig
-            if (!this.root.next && this.pgnObj.history.moves.length > 0) {
-                this.root.next = this.pgnObj.history.moves[0];
-                this.root.variation = this.pgnObj.history.moves;
-            }
-
-            // 6️⃣ Board aktualisieren
-            this.current = newMove;
+            // Board aktualisieren (Ansicht)
             if (!this.dummyBoard) {
                 // normales Board: Chess.js hat den Zug schon ausgeführt
                 this.board.setPosition(this.chess.fen(), true);
@@ -228,6 +212,29 @@ export class PgnViewer {
                 // Dummy-Board: nur visuell verschieben
                 this.board.movePiece(squareFrom, squareTo, false);
             }
+
+            // Neuer Zug → ExtendedHistory.addMove
+            let newMove;
+            try {
+                // für Dummy-Board übergebe from/to (und promotion falls nötig)
+                if (this.dummyBoard) {
+                    newMove = this.pgnObj.history.addMove(san, prev, true, { from: squareFrom, to: squareTo, promotion: "q" });
+                } else {
+                    newMove = this.pgnObj.history.addMove(san, prev);
+                }
+            } catch (err) {
+                console.error("addMove failed", err);
+                return false;
+            }
+
+            // Root initialisieren, falls nötig
+            if (!this.root.next && this.pgnObj.history.moves.length > 0) {
+                this.root.next = this.pgnObj.history.moves[0];
+                this.root.variation = this.pgnObj.history.moves;
+            }
+
+            // Board aktualisieren
+            this.current = newMove;
 
             this.renderMoves();
             return true;
