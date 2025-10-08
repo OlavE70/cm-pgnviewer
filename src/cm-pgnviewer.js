@@ -1,7 +1,7 @@
 // cm-pgnviewer.js
 import { Pgn as cmPgn } from 'cm-pgn';
 import { Chessboard, COLOR, FEN } from 'cm-chessboard';
-import { PromotionDialog } from 'cm-chessboard/extensions/promotion-dialog/PromotionDialog.js';
+import { PROMOTION_DIALOG_RESULT_TYPE, PromotionDialog } from 'cm-chessboard/extensions/promotion-dialog/PromotionDialog.js';
 // ExtendedHistory erweitert cm-pgn/History um Zugzurücknahme und optionale statt strikte Zugvalidierung
 import { ExtendedHistory } from './ExtendedHistory.js';
 
@@ -52,6 +52,7 @@ export class PgnViewer {
             this.loadBoard(miniPgn, data.meta);
         } 
         this.registerControls();
+        this.registerBoardInput();
     }
 
     /* Zeigt Board an, wenn kein PGN vorliegt. */
@@ -157,9 +158,131 @@ export class PgnViewer {
     /* === Abschnitt speziell für PGN === */
     registerBoardInput() {
         this.board.enableMoveInput((event) => {
+
             if (event.type !== "validateMoveInput") return true;
 
-            const { squareFrom, squareTo } = event;
+            const { squareFrom, squareTo, piece } = event;
+            const color = piece.charAt(0); // Farbe der ziehenden Figur - wichtig für Dummy-Board
+
+            let prev = this.current || null;
+            if (!prev && this.root?.next) prev = this.root;
+
+            // === Ausgangsstellung laden
+            const baseFen = this.current?.fen || this.startFen;
+            let loadFen = baseFen;
+
+            // Bei Dummy-Board erneuten Zug mit gleicher Farbe erlauben
+            if (this.dummyBoard && !this.getFenColor(baseFen) === color) {
+                loadFen = this.toggleFenColor(baseFen);
+            }
+
+            // Chess mit erlaubter, gespielter Farbe laden
+            this.chess.load(loadFen);
+
+            // === Promotionprüfung
+            const possibleMoves = this.chess.moves({ square: squareFrom, verbose: true });
+            const promoCandidate = possibleMoves.find(m => m.promotion && m.to === squareTo);
+
+            if (promoCandidate) {
+                // Öffne Promotiondialog asynchron, damit Chessboard bereit ist
+                event.chessboard.state.moveInputProcess.then(() => {
+                    this.board.showPromotionDialog(squareTo, this.chess.turn(), (result) => {
+                        if (result.type === PROMOTION_DIALOG_RESULT_TYPE.pieceSelected) {
+                            const promoPiece = result.piece.charAt(1);
+                            if (result && result.piece) {
+                                this.board.setPiece(result.square, result.piece, true)
+                            } else {
+                                this.board.setPosition(baseFen) // Promotion canceled
+                            }
+                            const promotedMove = this.chess.move({
+                                from: squareFrom,
+                                to: squareTo,
+                                promotion: promoPiece,
+                            });
+
+                            const san = promotedMove?.san || `${squareFrom}${squareTo}${promoPiece}`;
+                            this._commitMove(san, prev, { from: squareFrom, to: squareTo, promotion: promoPiece });
+                        } else {
+                            // Abbruch -> aktuelle Stellung wiederherstellen
+                            this.board.setPosition(baseFen, true);
+                            this.board.enableMoveInput(this.registerBoardInput.bind(this), this.chess.turn());
+                        }
+                    });
+                });
+                return true;
+            }
+
+            // === Kein Promotionfall -> normaler Zug
+            let moveObj = this.chess.move({ from: squareFrom, to: squareTo, promotion: "q" }, { sloppy: true });
+            if (!moveObj && !this.dummyBoard) {
+                // ungültiger Zug -> Cancel
+                return false;
+            }
+
+            const san = moveObj?.san || `${squareFrom}${squareTo}`;
+            this._commitMove(san, prev, { from: squareFrom, to: squareTo, promotion: moveObj?.promotion || null });
+            return true;
+
+        }); // Ende enableMoveInput(event)
+    }
+
+    /** interne Hilfsmethode zum Hinzufügen eines Zugs oder einer Variante */
+    _commitMove(san, prev, meta = {}) {
+        const branchPoint = prev || this.root;
+
+        // 1. Prüfe, ob der Zug bereits existiert
+        const findExisting = (san) => {
+            if (branchPoint.next && branchPoint.next.san === san) return branchPoint.next;
+            if (branchPoint.next?.variations?.length) {
+                for (const variation of branchPoint.next?.variations) {
+                    if (variation.length > 0 && variation[0].san === san) return variation[0];
+                }
+            }
+            return null;
+        };
+
+        const existing = findExisting(san);
+        if (existing) {
+            this.current = existing;
+            this.updateBoardToNode(this.current);
+            this.renderMoves();
+            return;
+        }
+
+        // 2. Neuer Zug oder Variante
+        let newMove;
+        try {
+            newMove = this.pgnObj.history.addMove(san, prev, true, meta);
+        } catch (err) {
+            console.error("addMove failed", err);
+            return;
+        }
+
+        // 3. Root initialisieren, falls nötig
+        if (!this.root.next && this.pgnObj.history.moves.length > 0) {
+            this.root.next = this.pgnObj.history.moves[0];
+            this.root.variation = this.pgnObj.history.moves;
+        }
+
+        // 4. Board & Anzeige aktualisieren
+        this.current = newMove;
+        this.renderMoves();
+    }
+
+    toggleFenColor(fen) {
+        return fen.replace(/\s(w|b)\s/, (m, color) => ` ${color === "w" ? "b" : "w"} `);
+    }
+
+    getFenColor(fen) {
+        const parts = fen.trim().split(/\s+/);
+        return parts[1]; // 'w' oder 'b'
+    }
+
+    registerBoardInput2() {
+        this.board.enableMoveInput((event) => {
+            if (event.type !== "validateMoveInput") return true;
+
+            const { squareFrom, squareTo, piece } = event;
 
             // Zug existiert noch nicht -> hinzufügen
             let prev = this.current || null;
@@ -202,15 +325,6 @@ export class PgnViewer {
                         return true;
                     }
                 }
-            }
-
-            // Board aktualisieren (Ansicht)
-            if (!this.dummyBoard) {
-                // normales Board: Chess.js hat den Zug schon ausgeführt
-                this.board.setPosition(this.chess.fen(), true);
-            } else {
-                // Dummy-Board: nur visuell verschieben
-                this.board.movePiece(squareFrom, squareTo, false);
             }
 
             // Neuer Zug → ExtendedHistory.addMove
@@ -282,8 +396,6 @@ export class PgnViewer {
         }
 
         this.renderMoves();
-
-        this.registerBoardInput();
     }
 
     renderPgnHeader() {
