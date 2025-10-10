@@ -172,11 +172,13 @@ export class PgnViewer {
             let loadFen = baseFen;
 
             // Bei Dummy-Board erneuten Zug mit gleicher Farbe erlauben
-            if (this.dummyBoard && !this.getFenColor(baseFen) === color) {
+            if (this.dummyBoard && !(this.getFenColor(baseFen) === color) ) {
                 loadFen = this.toggleFenColor(baseFen);
             }
 
             // Chess mit erlaubter, gespielter Farbe laden
+            // Für Promotiondialog muss der Zug erlaubt sein.
+            // Falls nicht erlaubt, wird ein Pseudo-Zug mit SAN ausgeführt, siehe unten.
             this.chess.load(loadFen);
 
             // === Promotionprüfung
@@ -190,7 +192,7 @@ export class PgnViewer {
                         if (result.type === PROMOTION_DIALOG_RESULT_TYPE.pieceSelected) {
                             const promoPiece = result.piece.charAt(1);
                             if (result && result.piece) {
-                                this.board.setPiece(result.square, result.piece, true)
+                                this.board.setPiece(squareTo, result.piece, true)
                             } else {
                                 this.board.setPosition(baseFen) // Promotion canceled
                             }
@@ -276,83 +278,6 @@ export class PgnViewer {
     getFenColor(fen) {
         const parts = fen.trim().split(/\s+/);
         return parts[1]; // 'w' oder 'b'
-    }
-
-    registerBoardInput2() {
-        this.board.enableMoveInput((event) => {
-            if (event.type !== "validateMoveInput") return true;
-
-            const { squareFrom, squareTo, piece } = event;
-
-            // Zug existiert noch nicht -> hinzufügen
-            let prev = this.current || null;
-            // Zug existiert nicht -> Variante anlegen
-            if (!prev && this.root?.next) prev = this.root;
-
-            // Ausgangsstellung laden
-            const baseFen = this.current?.fen || this.startFen;
-            this.chess.load(baseFen);
-
-            // Versuche, den Zug auszuführen — auch bei dummyBoard (sloppy)
-            let moveObj = this.chess.move(
-                { from: squareFrom, to: squareTo, promotion: "q" },
-                { sloppy: true }
-            );
-
-            // Wenn der Zug legal war, SAN übernehmen
-            let san = moveObj?.san;
-            if (!san && this.dummyBoard) {
-                // Sloppy-Parser lieferte kein Ergebnis -> Fallback auf reine Algebraik
-                san = `${squareFrom}${squareTo}`;
-            }
-
-            // Zug prüfen: existiert er schon in der Hauptlinie oder Variante?
-            const branchPoint = prev || this.root;
-
-            if (branchPoint.next && branchPoint.next.san === san) {
-                this.current = branchPoint.next;
-                this.updateBoardToNode(this.current);
-                this.renderMoves();
-                return true;
-            }
-
-            if (branchPoint.next?.variations?.length) {
-                for (const variation of branchPoint.next?.variations) {
-                    if (variation.length > 0 && variation[0].san === san) {
-                        this.current = variation[0];
-                        this.updateBoardToNode(this.current);
-                        this.renderMoves();
-                        return true;
-                    }
-                }
-            }
-
-            // Neuer Zug → ExtendedHistory.addMove
-            let newMove;
-            try {
-                // für Dummy-Board übergebe from/to (und promotion falls nötig)
-                if (this.dummyBoard) {
-                    newMove = this.pgnObj.history.addMove(san, prev, true, { from: squareFrom, to: squareTo, promotion: "q" });
-                } else {
-                    newMove = this.pgnObj.history.addMove(san, prev);
-                }
-            } catch (err) {
-                console.error("addMove failed", err);
-                return false;
-            }
-
-            // Root initialisieren, falls nötig
-            if (!this.root.next && this.pgnObj.history.moves.length > 0) {
-                this.root.next = this.pgnObj.history.moves[0];
-                this.root.variation = this.pgnObj.history.moves;
-            }
-
-            // Board aktualisieren
-            this.current = newMove;
-
-            this.renderMoves();
-            return true;
-        });
     }
 
     loadBoard(pgn, meta) {
