@@ -13,7 +13,7 @@ let currentAutoPlayer = null;
 
 
 /* === DEBUGGING ============================================== */
-const DEBUG = true; 
+const DEBUG = false; 
 /* === DEBUGGING ============================================== */
 
 
