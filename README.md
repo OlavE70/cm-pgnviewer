@@ -10,6 +10,7 @@ ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 * **src/cm-pgnadapter.js** – Adapter für Legacy-Seiten (`$.cmPgnViewer()`), ruft `initPgnViewers()`.
 * **src/cm-pgnwrapper.js** – Wrapper, der `<pgn>`-Tags erkennt, Viewer-Container aufbaut und `PgnViewer` initialisiert.
 * **src/cm-pgnviewer.js** – Kernklasse `PgnViewer`: Board- und Partie-Logik, PGN laden, Moves rendern, Varianten & Kommentare anzeigen, Auto-Play, Tastatursteuerung, Board-Input.
+* **src/ExtendedHistory.js** - erweitert die History-Klasse von cm-pgn um Zugzurücknahme und freie Zugeingabe (ohne Validierung).
 
 ## Abhängigkeiten
 
@@ -36,15 +37,22 @@ pgnViewerContainer
 
 ## Nutzung
 
-1. `<pgn>`-Tags in HTML einfügen:
+1. `<pgn>`, `<fen>`oder `<board>`-Tags in HTML einfügen:
 
 ```html
 <pgn>
 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
 </pgn>
-```
 
-2. Adapter/Wrapper laden:
+<fen author="Loyd, Samuel" source="New York Commercial Advertiser, 1897" stipulation="#2">3R3B/Q7/5nK1/3n4/3NkNR1/2p2p2/2P2P2/8</fen>
+
+<board author="Loyd, Samuel" source="New York Commercial Advertiser, 1897" stipulation="#2">3R3B/Q7/5nK1/3n4/3NkNR1/2p2p2/2P2P2/8</board>
+```
+> pgn: Stellt Spiele und Kommentierungen dar.  
+> fen: Board aus einer FEN-Stellung ohne Zugvalidierung. Nullzüge sind erlaubt, Zugregeln werden ignoriert.
+> board: Board aus einer FEN-Stellung, jedoch mit Validierung / Regelkonformität.
+
+2. Adapter (für ältere Browser) oder direkt Wrapper laden:
 
 ```html
 <script src="src/cm-pgnadapter.js"></script>
@@ -70,8 +78,12 @@ pgnViewerContainer
 
 5. Steuerung:
 
-   * Buttons: Flip, Start, Prev, Auto, Next, End, Show PGN
+   * Zugeingabe am Board mit Drag & Drop. Aktiver Zug ist hervorgehoben.
+   * Varianteneingabe möglich (aktiver Zug muss derjenige vor dem Zug sein, zu dem die Variante gespielt wird).
    * Tastatur: Pfeiltasten für Züge & Varianten, Space zusätzlich für Next
-   * Board-Input erlaubt Drag&Drop und neue Züge
+   * Buttons für `<pgn>`: Flip, Start, Prev, Auto, Next, End, Show PGN
+   * Buttons für`<fen>`und `<board>`: Flip, Undo und Reset.
 
-> Mehrere Viewer auf einer Seite möglich, jeweils unabhängig.
+> Mehrere Viewer auf einer Seite möglich, sie sind jeweils unabhängig.
+
+
