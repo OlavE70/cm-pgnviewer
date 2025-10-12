@@ -6,6 +6,7 @@
 
   <!-- Stylesheet für cm-chessboard -->
   <link rel="stylesheet" href="/cm-chessboard-assets/chessboard.css">
+  <link rel="stylesheet" href="/cm-chessboard-assets/extensions/promotion-dialog/promotion-dialog.css">
   <link rel="stylesheet" href="cm-pgnviewer.css">
   <!-- FontAwesome 5 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -151,10 +152,24 @@
 
   <h2>Leere PGN-Tags</h2>
   <div class="responsive-container">
-    <pgn>
-    </pgn> <!-- leeres PGN -->
+    <pgn> </pgn> 
   </div>  
+ 
+  <h1>FEN / Schachkomposition</h1>
+  <h2>FEN - ohne Zugvalidierung</h2>
+  <div class="responsive-container">
+    <fen author="Loyd, Samuel" source="New York Commercial Advertiser, 1897" stipulation="#2">3R3B/Q7/5nK1/3n4/3NkNR1/2p2p2/2P2P2/8</fen>
+  </div>
 
+  <h2>Board - mit Zugvalidierung</h2>
+  <div class="responsive-container">
+    <board author="Loyd, Samuel" source="New York Commercial Advertiser, 1897" stipulation="#2">3R3B/Q7/5nK1/3n4/3NkNR1/2p2p2/2P2P2/8</board>
+  </div>
+
+  <h2>Board - mit Promotion</h2>
+  <div class="responsive-container">
+    <board author="Promotion-Beispiel" stipulation="Promotion">4k3/1P6/8/8/6r1/8/8/2R1K3</board>
+  </div>
   <!-- jQuery laden (wie auf Originalseite) -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 

@@ -81,6 +81,8 @@
 }
 
 .pgnViewerContainer .outerBoard .board {
+  position: relative; /* wichtig für Overlay-Positionierung */
+  overflow: visible;
   width: 100%;
   max-width: 500px;
   aspect-ratio: 1 / 1;      /* immer quadratisch */
