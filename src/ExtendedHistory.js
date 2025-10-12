@@ -125,7 +125,7 @@ export class ExtendedHistory extends History {
      *
      * signature:
      *   addMove(notationOrMove, previous = null, sloppy = true, opts = {})
-     * opts kann { from, to, promotion } enthalten (stark empfohlen für Dummy-Modus!)
+     * opts kann { from, to, promotion, fen } enthalten (stark empfohlen für Dummy-Modus!)
      */
 /** addMove mit optionaler Validierung + Varianten + smarter Promotion */
     addMove(notationOrMove, previous = null, sloppy = true, opts = {}) {
@@ -134,8 +134,48 @@ export class ExtendedHistory extends History {
             return super.addMove(notationOrMove, previous, sloppy);
         }
 
+        const startFen = opts.fen || previous?.fen || this.props.setUpFen || FEN.start;
+
+        // Nullzug prüfen / erfassen
+        if (notationOrMove === "--") {
+            // Nur Farbwechsel und Ply erhöhen
+            const move = {
+                san: "--",
+                notation: "--",
+                from: null,
+                to: null,
+                piece: null,
+                color: previous?.color === 'w' ? 'b' : 'w',
+                captured: null,
+                flags: "",
+                fen: startFen, // FEN bleibt unverändert
+                uci: null,
+                previous,
+                ply: previous ? previous.ply + 1 : 1,
+                variation: null,
+                variations: [],
+                isNullMove: true
+            };
+
+            if (!previous) {
+                move.variation = this.moves;
+                this.moves.push(move);
+            } else {
+                if (!previous.next) {
+                    previous.next = move;
+                    move.variation = previous.variation || this.moves;
+                    (previous.variation || this.moves).push(move);
+                } else {
+                    move.variation = [];
+                    previous.next.variations.push(move.variation);
+                    move.variation.push(move);
+                }
+            }
+
+            return move;
+        }
+
         // === 2️⃣ Freier Zugmodus (ohne Validierung) ===
-        const startFen = previous?.fen || this.props.setUpFen || FEN.start;
         const chessTemp = new Chess(startFen, { chess960: !!this.props.chess960 });
 
         let applied = null;
@@ -170,6 +210,7 @@ export class ExtendedHistory extends History {
 
         // Fallback, falls alles fehlschlug
         if (!applied) {
+            console.warn ("History: Fallback für PseudoMove")
             applied = {
                 san: typeof notationOrMove === "string" ? notationOrMove : String(notationOrMove),
                 notation: typeof notationOrMove === "string" ? notationOrMove : String(notationOrMove),
@@ -179,7 +220,7 @@ export class ExtendedHistory extends History {
                 color: previous?.color === "w" ? "b" : "w",
                 captured: null,
                 flags: "",
-                fen: chessTemp.fen(),
+                fen: this.toggleFenColor( chessTemp.fen() ),
                 uci: (providedFrom && providedTo)
                     ? providedFrom + providedTo + (providedPromotion || "")
                     : null,
@@ -193,6 +234,7 @@ export class ExtendedHistory extends History {
             ply: previous ? previous.ply + 1 : 1,
             variation: null,
             variations: [],
+            isNullMove: false
         };
 
         // === 4️⃣ In History einfügen – MIT VARIANTEN ===
@@ -214,7 +256,6 @@ export class ExtendedHistory extends History {
                 move.variation.push(move);
             }
         }
-
         return move;
     }
 
@@ -228,16 +269,16 @@ export class ExtendedHistory extends History {
      * Return: { pieceFrom, capturedPiece, capturedSquare, isEnPassant }
      */
     _applyPseudoMove(chessTemp, from, to, promotion = null) {
-        // helper: if get/put/remove not available, bail out
+        // helper: get/put/remove als Funktion verfügbar?
         if (typeof chessTemp.get !== "function" || typeof chessTemp.put !== "function" || typeof chessTemp.remove !== "function") {
-            // nothing we can do - just return empty info
+            console.warn("History: Chess.js liefert keine Daten.")
             return { pieceFrom: null, capturedPiece: null, capturedSquare: null, isEp: false };
         }
 
         const pieceFrom = chessTemp.get(from);
         const destPiece = chessTemp.get(to);
 
-        // No piece at source -> nothing to simulate
+        // Keine Figur auf Source - nichts zu simulieren
         if (!pieceFrom) {
             return { pieceFrom: null, capturedPiece: null, capturedSquare: null, isEp: false };
         }
@@ -246,7 +287,7 @@ export class ExtendedHistory extends History {
         let capturedSquare = destPiece ? to : null;
         let isEp = false;
 
-        // Detect en-passant: pawn moves diagonally to an empty square -> captured pawn sits behind 'to'
+        // En passant prüfen
         if (!capturedPiece && pieceFrom.type === 'p' && from[0] !== to[0]) {
             const fromRank = parseInt(from[1], 10);
             const toRank = parseInt(to[1], 10);
@@ -269,18 +310,20 @@ export class ExtendedHistory extends History {
             }
         }
 
-        // Remove captured piece if any (normal capture or en-passant)
+        // geschlagene Figuren entfernen
         if (capturedPiece && capturedSquare) {
             chessTemp.remove(capturedSquare);
         }
 
-        // Remove piece from 'from' and put on 'to' (handle promotion type)
+        // Zug simulieren 
         chessTemp.remove(from);
         const newType = (promotion ? promotion.toLowerCase() : pieceFrom.type);
         chessTemp.put({ type: newType, color: pieceFrom.color }, to);
 
-        // We did low-level updates; chessTemp.fen() now reflects piece placement (castling rights might be stale in edge cases)
-        const fenAfter = chessTemp.fen();
+        // Brett low-level manupuliert, chessTemp.fen() enthält Boardstellung. Rochade-Rechte möglicherweise nicht korrekt!
+        // Spielerfarbe muss umgekehrt werden.
+        const fenAfter = this.toggleFenColor( chessTemp.fen() );
+        console.log ("History: Simulierter Zug, fenAfter:", fenAfter);
 
         return { pieceFrom, capturedPiece, capturedSquare, isEp, fenAfter };
     }
@@ -332,6 +375,7 @@ export class ExtendedHistory extends History {
         // Castling?
         if (pieceFrom.type === 'k') {
             // einfache Heuristik: König bewegt sich 2 Felder -> Rochade
+            // TODO: chess960-Rochade
             if (from === 'e1' && to === 'g1') return 'O-O';
             if (from === 'e1' && to === 'c1') return 'O-O-O';
             if (from === 'e8' && to === 'g8') return 'O-O';
@@ -380,5 +424,9 @@ export class ExtendedHistory extends History {
     /** Aktiviert oder deaktiviert die Zugvalidierung */
     setValidation(enabled) {
         this.props.validateMoves = enabled;
+    }
+
+    toggleFenColor(fen) {
+        return fen.replace(/\s(w|b)\s/, (m, color) => ` ${color === "w" ? "b" : "w"} `);
     }
 }

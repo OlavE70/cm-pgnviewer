@@ -10,8 +10,17 @@ import { Chess } from 'chess.mjs/src/Chess.js';
 
 // Zeiger auf aktives AutoPlay -> es soll nur jeweils ein Board laufen
 let currentAutoPlayer = null;
+
+
+/* === DEBUGGING ============================================== */
+const DEBUG = true; 
+/* === DEBUGGING ============================================== */
+
+
 export class PgnViewer {
+
     constructor(ids, data) {
+
         this.ids = ids;
         this.boardContainer = document.getElementById(this.ids.board);
         this.movesContainer = document.getElementById(this.ids.moves);
@@ -66,7 +75,8 @@ export class PgnViewer {
             previous: null,
             next: null,
             variation: this.pgnObj.history?.moves || [],
-            san: null
+            san: null,
+            isNullMove: false
         };
         this.current = null;
         this.board.setPosition(this.startFen, false);
@@ -167,13 +177,41 @@ export class PgnViewer {
             let prev = this.current || null;
             if (!prev && this.root?.next) prev = this.root;
 
-            // === Ausgangsstellung laden
-            const baseFen = this.current?.fen || this.startFen;
+            /* === Ausgangsstellung laden - FEN des Boards vor dem neuen Zug
+            * Der neue Zug bekommt die FEN nach dem Zug. Beim erneuten Ziehen wird dieser dann 'this.current'
+            * und damit Vorgänger ('prev') des nächsten. Da der Zug hier erst ausgeführt und damit validiert wird,
+            * ist 'this.current' = 'prev' der Knoten, an dem der neueste Zug angehängt wird. */
+            const baseFen = this.current?.fen || this.root.fen || this.startFen;
+            const baseFenColor = this.getFenColor(baseFen);
+
             let loadFen = baseFen;
 
+            if (DEBUG) {
+                console.log ("\n\n========================================\nStart rBI, this.current == prev / Log event:\n", event);
+                console.log ("root:", this.root);
+                console.log ("Color / baseFenColor:", color, baseFenColor);
+                console.log ("prev:", prev);
+                console.log ("this.current == prev?", this.current === prev);
+                console.log ("next:", prev?.next);
+                console.log ("BaseFen:", baseFen);
+            }
+
             // Bei Dummy-Board erneuten Zug mit gleicher Farbe erlauben
-            if (this.dummyBoard && !(this.getFenColor(baseFen) === color) ) {
+            if (this.dummyBoard && prev && (prev?.isNullMove === false) && !(baseFenColor === color) ) {
                 loadFen = this.toggleFenColor(baseFen);
+
+                if (DEBUG) {
+                    console.log ("Toggle:", loadFen);
+                }
+
+                this._commitMove("--", prev, { fen:loadFen } );
+                prev = this.current || null;
+                if (!prev && this.root?.next) prev = this.root;
+
+                if (DEBUG) {
+                    console.log ("Prev nach Toggle '(--)':", prev);
+                }
+
             }
 
             // Chess mit erlaubter, gespielter Farbe laden
@@ -218,7 +256,12 @@ export class PgnViewer {
             let moveObj = this.chess.move({ from: squareFrom, to: squareTo, promotion: "q" }, { sloppy: true });
             if (!moveObj && !this.dummyBoard) {
                 // ungültiger Zug -> Cancel
+                console.warn ("Ungültiger Zug - Ende");
                 return false;
+            }
+
+            if (DEBUG) {
+                console.log ("moveOj:", moveObj);
             }
 
             const san = moveObj?.san || `${squareFrom}${squareTo}`;
@@ -243,6 +286,11 @@ export class PgnViewer {
             return null;
         };
 
+        if (DEBUG) {
+            console.log ("Commit san, prev, meta:\n", san, prev, meta);
+            console.log ("branchPoint:", branchPoint)
+        }
+        
         const existing = findExisting(san);
         if (existing) {
             this.current = existing;
@@ -264,6 +312,11 @@ export class PgnViewer {
         if (!this.root.next && this.pgnObj.history.moves.length > 0) {
             this.root.next = this.pgnObj.history.moves[0];
             this.root.variation = this.pgnObj.history.moves;
+        }
+
+        if (DEBUG) {
+            console.log ("Added newMove:\n", newMove);
+            console.log("fenAfter:", newMove.fen);
         }
 
         // 4. Board & Anzeige aktualisieren
@@ -301,7 +354,8 @@ export class PgnViewer {
                 san: null,
                 next: this.pgnObj.history?.moves?.[0] || null,
                 variation: this.pgnObj.history?.moves || [],
-                previous: null
+                previous: null,
+                isNullMove: false
             };           
 
             this.current = null;
@@ -411,6 +465,11 @@ export class PgnViewer {
                 span.style.cursor = 'pointer';
                 span.addEventListener('click', () => {
                     this.current = move;
+
+                    if (DEBUG) {
+                        console.log ("\nMove selected:", move);
+                    }
+
                     this.updateBoardToNode(move);
                     this.renderMoves();
                 });
