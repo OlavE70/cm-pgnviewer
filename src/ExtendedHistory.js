@@ -93,15 +93,40 @@ export class ExtendedHistory extends History {
 
         // 3. Aus Variation entfernen
         if (move.variation) {
+            // move aus dem Array move.variation entfernen
             const index = move.variation.indexOf(move)
             if (index !== -1) {
                 move.variation.splice(index, 1)
             }
+            
+            // Besitzer suchen: entweder Move.previous selbst oder Move.previous.next
+            if (move.variation.length === 0 && move.previous) {
+                let owner = move.previous; 
+                
+                if (owner.next && owner.next.variations && owner.next.variations.includes(move.variation)) {
+                    owner = owner.next; 
+                } 
+                else if (!owner.variations || !owner.variations.includes(move.variation)) {
+                    if (move.previous.next) {
+                        owner = move.previous.next;
+                    }
+                }
+
+                if (owner && owner.variations) {
+                    const varIndex = owner.variations.indexOf(move.variation);
+                    if (varIndex !== -1) {
+                        owner.variations.splice(varIndex, 1);
+                    }
+                }
+            }
         }
 
+    
         // 4. Referenzen nach oben bereinigen
         if (move.previous) {
-            move.previous.next = null
+            if (move.previous.next === move) {
+                move.previous.next = null
+            }
         }
 
         // 5. Cleanup (optional)
