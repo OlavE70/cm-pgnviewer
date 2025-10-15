@@ -13,7 +13,7 @@ let currentAutoPlayer = null;
 
 
 /* === DEBUGGING ============================================== */
-const DEBUG = false; 
+const DEBUG = true; 
 /* === DEBUGGING ============================================== */
 
 
@@ -200,18 +200,9 @@ export class PgnViewer {
             if (this.dummyBoard && prev && (prev?.isNullMove === false) && !(baseFenColor === color) ) {
                 loadFen = this.toggleFenColor(baseFen);
 
-                if (DEBUG) {
-                    console.log ("Toggle:", loadFen);
-                }
-
                 this._commitMove("--", prev, { fen:loadFen } );
                 prev = this.current || null;
                 if (!prev && this.root?.next) prev = this.root;
-
-                if (DEBUG) {
-                    console.log ("Prev nach Toggle '(--)':", prev);
-                }
-
             }
 
             // Chess mit erlaubter, gespielter Farbe laden
@@ -258,10 +249,6 @@ export class PgnViewer {
                 // ungültiger Zug -> Cancel
                 console.warn ("Ungültiger Zug - Ende");
                 return false;
-            }
-
-            if (DEBUG) {
-                console.log ("moveOj:", moveObj);
             }
 
             const san = moveObj?.san || `${squareFrom}${squareTo}`;
@@ -686,6 +673,12 @@ export class PgnViewer {
     undoMove() {
         if (this.current && this.pgnObj?.history) {
             this.current = this.pgnObj.history.removeMove(this.current);
+
+            if (DEBUG) {
+                console.log ("Undo - neuer 'this.current:", this.current);
+
+            }
+
             if (this.current === null) {
                 this.resetFen();
             } else {
