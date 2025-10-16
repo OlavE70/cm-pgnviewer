@@ -403,12 +403,27 @@ export class PgnViewer {
         return fen.trim();
     }
 
+    fenBoardPart(fen) {
+        const parts = fen.trim().split(/\s+/);
+        return parts[0].trim();
+    }
+
     renderAlternativeHeader(meta = {}) {
+        if (!this.headerElement) return;
+
         const { author, source, stipulation } = meta;
-        this.headerElement.innerHTML = `
-            <div class="header-line1">${author || ''}</div>
-            <div class="header-line2">${source || ''}${stipulation ? ' · ' + stipulation : ''}</div>
+        const boardFen = this.fenBoardPart(this.startFen);
+
+        const line1 = author || "";
+
+        const line2Tags = [source, stipulation, boardFen].filter(Boolean);
+        const line2 = line2Tags.join(' · '); // Zentrierter Punkt als Trenner
+
+        const html = `
+            <div class="header-line1">${line1}</div>
+            <div class="header-line2">${line2}</div>
         `;
+        this.headerElement.innerHTML = html.trim();
     }
     /* === Ende des Abschnitts für FEN / Schachkomposition, Aufgaben etc. === */
 
