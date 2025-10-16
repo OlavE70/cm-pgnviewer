@@ -13,7 +13,7 @@ let currentAutoPlayer = null;
 
 
 /* === DEBUGGING ============================================== */
-const DEBUG = true; 
+const DEBUG = false; 
 /* === DEBUGGING ============================================== */
 
 
@@ -308,6 +308,7 @@ export class PgnViewer {
 
         // 4. Board & Anzeige aktualisieren
         this.current = newMove;
+        this.updateBoardToNode(this.current);
         this.renderMoves();
     }
 
@@ -399,7 +400,7 @@ export class PgnViewer {
         if (parts.length === 3) return `${parts.join(' ')} - 0 1`;
         if (parts.length === 4) return `${parts.join(' ')} 0 1`;
         if (parts.length === 5) return `${parts.join(' ')} 1`;
-        return fen;
+        return fen.trim();
     }
 
     renderAlternativeHeader(meta = {}) {

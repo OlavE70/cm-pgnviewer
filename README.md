@@ -1,6 +1,6 @@
-# CM PGN Viewer
+# cm-PGN Viewer
 
-Ein schlanker Chess PGN-Viewer für Browser, der Partien aus `<pgn>`-Tags darstellt. Unterstützt Navigation, Auto-Play, Varianten, Kommentare und responsive Layouts.
+Ein Chess PGN-Viewer für Browser, der Partien aus `<pgn>`-Tags darstellt. Unterstützt Navigation, Auto-Play, Varianten, Kommentare und responsive Layouts.
 ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 
 ## Dateien & Aufgaben
@@ -14,10 +14,10 @@ ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 
 ## Abhängigkeiten
 
-* cm-chessboard
+* cm-chessboard 
 * cm-pgn
 * chess.mjs
->> siehe https://github.com/shaack. 
+> siehe https://github.com/shaack. 
 
 ## Container-Aufbau
 
@@ -49,8 +49,9 @@ pgnViewerContainer
 <board author="Loyd, Samuel" source="New York Commercial Advertiser, 1897" stipulation="#2">3R3B/Q7/5nK1/3n4/3NkNR1/2p2p2/2P2P2/8</board>
 ```
 > pgn: Stellt Spiele und Kommentierungen dar.  
-> fen: Board aus einer FEN-Stellung ohne Zugvalidierung. Nullzüge sind erlaubt, Zugregeln werden ignoriert.
-> board: Board aus einer FEN-Stellung, jedoch mit Validierung / Regelkonformität.
+> fen: Board aus einer FEN-Stellung ohne Zugvalidierung. Nullzüge sind erlaubt, Zugregeln werden ignoriert. En passant und Promotion werden erkannt.
+> board: Board aus einer FEN-Stellung, jedoch mit Validierung / Regelkonformität. Die FEN muss entsprechend sorgfältig um e. p. etc. aufgebaut werden, falls relevant.
+> Die FEN wird ggf. um 'w - - 0 1' ergänzt, falls lediglich die Brettstellung angegeben wird (vgl. index.html). 
 
 2. Adapter (für ältere Browser) oder direkt Wrapper laden:
 
@@ -73,6 +74,7 @@ pgnViewerContainer
 ```html
 <link rel="stylesheet" href="cm-pgnviewer.css">
 ```
+> Ggf. weitere stylesheets für Chessboard und Extensions beachten.
 
 4. Viewer initialisiert sich automatisch (optional `$.cmPgnViewer()`).
 
@@ -86,4 +88,8 @@ pgnViewerContainer
 
 > Mehrere Viewer auf einer Seite möglich, sie sind jeweils unabhängig.
 
+6. Beachten:
+   * Viewport-Breite für kleine Bildschirme in cm-pgnviewer im Abschnitt Media.
+   * Imports werden übre Vite gesetzt. Ggf. anpassen.
+   * Innerhalb von cm-pgnviewer.js im Konstruktor /cm-chessboard-assets/ beachten! Manuelle Anpassung ggf. erforderlich.
 
