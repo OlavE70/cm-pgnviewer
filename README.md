@@ -1,15 +1,15 @@
-# cm-PGN Viewer
+# PGN Viewer basierend auf chessmail.de-Komponenten
 
 Ein Chess PGN-Viewer für Browser, der Partien aus `<pgn>`-Tags darstellt. Unterstützt Navigation, Auto-Play, Varianten, Kommentare und responsive Layouts.
 ARIA-konforme Button für möglichst barrierearme / barrierefreie Bedienung.
 
 ## Dateien & Aufgaben
 
-* **index.html** – Beispielseite mit `<pgn>`-Tags für Partien.
+* **index.html** – Beispielseite mit `<pgn>`-, `<fen>`- und `<board>´-Tags für Partien und FEN-Stellungen.
 * **cm-pgnviewer.css** – Styles für Board, Moves-Liste, Buttons und PGN-Text; responsive Layout.
 * **src/cm-pgnadapter.js** – Adapter für Legacy-Seiten (`$.cmPgnViewer()`), ruft `initPgnViewers()`.
-* **src/cm-pgnwrapper.js** – Wrapper, der `<pgn>`-Tags erkennt, Viewer-Container aufbaut und `PgnViewer` initialisiert.
-* **src/cm-pgnviewer.js** – Kernklasse `PgnViewer`: Board- und Partie-Logik, PGN laden, Moves rendern, Varianten & Kommentare anzeigen, Auto-Play, Tastatursteuerung, Board-Input.
+* **src/cm-pgnwrapper.js** – Wrapper, der `<pgn>`-Tags usw. erkennt, Viewer-Container aufbaut und `PgnViewer` initialisiert.
+* **src/cm-pgnviewer.js** – Kernklasse `PgnViewer`: Board- und Partie-Logik, PGN / FEN laden, Moves rendern, Varianten & Kommentare anzeigen, Auto-Play, Tastatursteuerung, Board-Input.
 * **src/ExtendedHistory.js** - erweitert die History-Klasse von cm-pgn um Zugzurücknahme und freie Zugeingabe (ohne Validierung).
 
 ## Abhängigkeiten
