@@ -49,8 +49,8 @@ pgnViewerContainer
 <board author="Loyd, Samuel" source="New York Commercial Advertiser, 1897" stipulation="#2">3R3B/Q7/5nK1/3n4/3NkNR1/2p2p2/2P2P2/8</board>
 ```
 > pgn: Stellt Spiele und Kommentierungen dar.  
-> fen: Board aus einer FEN-Stellung ohne Zugvalidierung. Nullzüge sind erlaubt, Zugregeln werden ignoriert. En passant und Promotion werden erkannt.
-> board: Board aus einer FEN-Stellung, jedoch mit Validierung / Regelkonformität. Die FEN muss entsprechend sorgfältig um e. p. etc. aufgebaut werden, falls relevant.
+> fen: Board aus einer FEN-Stellung ohne Zugvalidierung. Nullzüge sind erlaubt, Zugregeln werden ignoriert. En passant und Promotion werden erkannt.  
+> board: Board aus einer FEN-Stellung, jedoch mit Validierung / Regelkonformität. Die FEN muss entsprechend sorgfältig um e. p. etc. aufgebaut werden, falls relevant.  
 > Die FEN wird ggf. um 'w - - 0 1' ergänzt, falls lediglich die Brettstellung angegeben wird (vgl. index.html). 
 
 2. Adapter (für ältere Browser) oder direkt Wrapper laden:
